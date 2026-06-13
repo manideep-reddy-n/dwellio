@@ -1,0 +1,20 @@
+package com.dwellio.organization.repository;
+
+import com.dwellio.domain.entity.Organization;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface OrganizationRepository extends JpaRepository<Organization, UUID> {
+
+    @Query("SELECT o FROM Organization o WHERE o.id = :id AND o.deletedAt IS NULL")
+    Optional<Organization> findActiveById(@Param("id") UUID id);
+
+    @Query("SELECT o FROM Organization o WHERE o.slug = :slug AND o.deletedAt IS NULL")
+    Optional<Organization> findActiveBySlug(@Param("slug") String slug);
+
+    @Query("SELECT COUNT(o) > 0 FROM Organization o WHERE o.slug = :slug AND o.deletedAt IS NULL")
+    boolean existsActiveBySlug(@Param("slug") String slug);
+}

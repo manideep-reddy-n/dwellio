@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: dwellio-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/dwellio}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:manideep@1}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: ${PORT:8081}
+  servlet:
+    context-path: /api/v1
+
+logging:
+  level:
+    com.dwellio: INFO
+    org.hibernate.SQL: WARN
+
+dwellio:
+  jwt:
+    secret: ${JWT_SECRET:change-me-use-at-least-32-characters-long-secret}
+    access-token-expiration: PT15M
+    refresh-token-expiration: P7D
+    password-reset-expiration: PT1H
