@@ -77,6 +77,13 @@ All org-scoped routes require JWT. Authorization uses membership-only RBAC: `Use
 
 System roles (OWNER, RESIDENT) are immutable. OWNER has wildcard `*` in responses; RESIDENT permissions are seeded on org creation.
 
+### Memberships (current user)
+
+| Method | Endpoint | Auth |
+|--------|----------|------|
+| GET | `/users/me/memberships` | JWT |
+| GET | `/users/me/memberships/by-slug/{slug}` | JWT |
+
 ### Memberships & Staff
 
 | Method | Endpoint | Permission |
@@ -102,7 +109,9 @@ Approval creates ACTIVE membership with RESIDENT role (no PENDING memberships).
 
 | Method | Endpoint | Auth |
 |--------|----------|------|
+| GET | `/marketplace/organizations` | Public — search verified orgs (`city`, `type`, `q`) |
 | GET | `/marketplace/organizations/{slug}` | Public (VERIFIED orgs only) |
+| GET | `/marketplace/organizations/{slug}/reviews` | Public (VERIFIED orgs only) |
 
 ## Accommodation API (Phase 4)
 
@@ -158,6 +167,138 @@ Transfer closes the current occupancy, creates a new one, updates statuses atomi
 
 Returns the full building tree with space/bed statuses and current occupant summaries.
 
+## Metrics Cache API (Phase 5)
+
+Event-driven projection into `organization_metrics_cache`. Refreshes run **asynchronously after commit**; source tables remain authoritative.
+
+| Trigger | Projection updated |
+|---------|-------------------|
+| Occupancy allocate/release/transfer | Availability |
+| Structure change (building/floor/space/bed) | Availability |
+| Join request approved (RESIDENT membership) | `active_resident_count` |
+
+**Query budget per refresh:** 2–3 native aggregate queries + 1 cache upsert (O(1) per org).
+
+### Dashboard & Rebuild
+
+| Method | Endpoint | Permission |
+|--------|----------|------------|
+| GET | `/organizations/{organizationId}/dashboard` | `dashboard:view` |
+| POST | `/organizations/{organizationId}/metrics/rebuild` | `building:manage` |
+
+Rebuild re-aggregates availability and resident count from source tables (idempotent).
+
+### Marketplace metrics
+
+`GET /marketplace/organizations/{slug}` now includes a `metrics` object (availability, ratings, service metrics fields, `refreshedAt`). Falls back to inline rebuild if cache row is missing.
+
+**Resident count:** ACTIVE memberships with `roles.name = 'RESIDENT'` (future: consider system role flag).
+
+## Operations API (Phase 6)
+
+Complaints, announcements, assets, and reviews with async metrics projection for service-quality fields.
+
+### Complaints
+
+| Method | Endpoint | Permission |
+|--------|----------|------------|
+| POST | `/organizations/{organizationId}/complaints` | `complaint:create` |
+| GET | `/organizations/{organizationId}/complaints` | `complaint:read` |
+| GET | `/organizations/{organizationId}/complaints/mine` | `complaint:read_own` |
+| GET | `/organizations/{organizationId}/complaints/{complaintId}` | membership + row access |
+| PATCH | `/organizations/{organizationId}/complaints/{complaintId}` | `complaint:manage` |
+| POST | `/organizations/{organizationId}/complaints/{complaintId}/assign` | `complaint:assign` |
+| POST | `/organizations/{organizationId}/complaints/{complaintId}/start` | `complaint:manage` |
+| POST | `/organizations/{organizationId}/complaints/{complaintId}/resolve` | `complaint:manage` |
+| POST | `/organizations/{organizationId}/complaints/{complaintId}/close` | `complaint:manage` |
+| POST | `/organizations/{organizationId}/complaints/{complaintId}/reopen` | `complaint:manage` |
+| POST | `/organizations/{organizationId}/complaints/{complaintId}/attachments` | creator (open) or `complaint:manage` |
+| DELETE | `/organizations/{organizationId}/complaints/{complaintId}` | `complaint:manage` |
+
+**Status flow:** `OPEN` → `IN_PROGRESS` / `RESOLVED` (shortcut) → `CLOSED`; `RESOLVED`/`CLOSED` → `REOPENED` for recurring issues.
+
+**SLA fields:** `assigned_at`, `first_response_at` (set on assign/start/resolve). Optional `asset_id` links complaint to org asset.
+
+**Categories (enum V1):** `WIFI`, `FOOD`, `HOUSEKEEPING`, `MAINTENANCE`, `ELECTRICITY`, `PLUMBING`, `SECURITY`, `NOISE`, `PAYMENT`, `OTHER`. Required on create. List endpoints accept optional `?category=` filter.
+
+**Dashboard:** `complaintCategoryDistribution` on `GET /organizations/{id}/dashboard` — counts grouped by category (refreshed with complaint metrics).
+
+### Announcements
+
+| Method | Endpoint | Permission |
+|--------|----------|------------|
+| POST | `/organizations/{organizationId}/announcements` | `announcement:manage` |
+| GET | `/organizations/{organizationId}/announcements` | `announcement:read` / `read_own` |
+| GET | `/organizations/{organizationId}/announcements/{id}` | membership + visibility |
+| PATCH | `/organizations/{organizationId}/announcements/{id}` | `announcement:manage` |
+| POST | `/organizations/{organizationId}/announcements/{id}/publish` | `announcement:manage` |
+| DELETE | `/organizations/{organizationId}/announcements/{id}` | `announcement:manage` |
+
+Published announcements remain editable; `updated_at` is preserved via JPA auditing.
+
+### Assets
+
+| Method | Endpoint | Permission |
+|--------|----------|------------|
+| GET | `/organizations/{organizationId}/assets` | `asset:read` |
+| POST | `/organizations/{organizationId}/assets` | `asset:manage` |
+| PATCH | `/organizations/{organizationId}/assets/{assetId}` | `asset:manage` |
+| DELETE | `/organizations/{organizationId}/assets/{assetId}` | `asset:manage` |
+
+### Reviews
+
+| Method | Endpoint | Permission |
+|--------|----------|------------|
+| POST | `/organizations/{organizationId}/reviews` | `review:create` |
+| GET | `/organizations/{organizationId}/reviews` | `review:read` |
+| GET | `/organizations/{organizationId}/reviews/mine` | `review:update_own` |
+| PUT | `/organizations/{organizationId}/reviews/mine` | `review:update_own` |
+| POST | `/organizations/{organizationId}/reviews/{reviewId}/reports` | active membership |
+
+**Rules:** One review per membership; minimum **7 days** active membership before create; updates change both rating and body.
+
+### Phase 6 metrics
+
+`MetricsAggregateRepository` now projects:
+
+- `open_complaint_count` — `OPEN`, `IN_PROGRESS`, `REOPENED`
+- `avg_resolution_days` — from `resolved_at - created_at`
+- `resolution_rate` — resolved/closed vs total
+- `avg_first_response_hours` — from `first_response_at - created_at`
+- `avg_rating`, `review_count` — from reviews
+
+Refreshed asynchronously on complaint/review changes via `ComplaintMetricsChangedEvent` / `ReviewMetricsChangedEvent`. Full rebuild via `POST /organizations/{id}/metrics/rebuild`.
+
+## Notifications API (Phase 7)
+
+Persistent PostgreSQL notifications with Spring WebSocket + STOMP delivery after commit.
+
+### REST
+
+| Method | Endpoint | Auth |
+|--------|----------|------|
+| GET | `/notifications` | JWT (paginated, default `size=20`) |
+| GET | `/notifications/unread-count` | JWT |
+| PATCH | `/notifications/{id}/read` | JWT |
+| PATCH | `/notifications/read-all` | JWT |
+
+**Query params:** `page`, `size`, `unreadOnly`, `organizationId`
+
+### WebSocket
+
+| Setting | Value |
+|---------|-------|
+| Endpoint | `/ws` (full URL: `ws://host:8081/api/v1/ws`) |
+| Auth | `Authorization: Bearer {token}` on STOMP CONNECT, or `?token=` on handshake |
+| User queue | `/user/queue/notifications` |
+| Org topic | `/topic/org/{orgId}/announcements` |
+
+### Notification types
+
+`JOIN_REQUEST_APPROVED`, `JOIN_REQUEST_REJECTED`, `COMPLAINT_CREATED`, `COMPLAINT_ASSIGNED`, `COMPLAINT_RESOLVED`, `COMPLAINT_REOPENED`, `ANNOUNCEMENT_PUBLISHED`, `OCCUPANCY_ALLOCATED`, `OCCUPANCY_TRANSFERRED`, `REVIEW_REPORTED`, `SYSTEM`
+
+Schema keeps `body` and `status` (`UNREAD`/`READ`); references stored in `payload_json`.
+
 ## Database
 
 Flyway migrations run automatically on startup:
@@ -166,6 +307,9 @@ Flyway migrations run automatically on startup:
 - `V2__seed_reference_data.sql` — FREE/PRO/ENTERPRISE plans, permissions, amenities
 - `V3__staff_invitations.sql` — pending staff invitations for unregistered emails
 - `V4__occupancy_membership_unique.sql` — one current occupancy per membership
+- `V5__phase6_operations.sql` — complaint `asset_id`, SLA timestamps, `REOPENED` status, `avg_first_response_hours`
+- `V6__complaint_categories.sql` — expanded enum categories, `complaint_category_counts` JSON on metrics cache
+- `V7__notifications_phase7.sql` — `payload_json`, notification type constraint, indexes
 
 All new organizations default to the **FREE** plan (`SystemConstants.FREE_PLAN_ID`).
 
@@ -189,5 +333,12 @@ src/main/java/com/dwellio/
 ├── space/           # room/unit CRUD (Phase 4)
 ├── bed/             # bed CRUD, BED_BASED only (Phase 4)
 ├── occupancy/       # allocate, transfer, release (Phase 4)
+├── metrics/         # cache projection, events, dashboard (Phase 5)
+├── complaint/       # complaints workflow, attachments (Phase 6)
+├── announcement/    # announcements (Phase 6)
+├── asset/           # asset registry (Phase 6)
+├── review/          # reviews and reports (Phase 6)
+├── operations/      # shared operations guard (Phase 6)
+├── notification/    # inbox, WebSocket/STOMP delivery (Phase 7)
 └── DwellioApplication.java
 ```

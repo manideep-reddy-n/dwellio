@@ -1,29 +1,29 @@
 package com.dwellio.accommodation.event;
 
+import com.dwellio.common.event.AfterCommitEventPublisher;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class AccommodationEventPublisher {
 
-    private final ApplicationEventPublisher eventPublisher;
+    private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     public void publishOccupancyAllocated(OccupancyAllocatedEvent event) {
-        eventPublisher.publishEvent(event);
+        afterCommitEventPublisher.publish(event);
     }
 
     public void publishOccupancyReleased(OccupancyReleasedEvent event) {
-        eventPublisher.publishEvent(event);
+        afterCommitEventPublisher.publish(event);
     }
 
     public void publishOccupancyTransferred(OccupancyTransferredEvent event) {
-        eventPublisher.publishEvent(event);
+        afterCommitEventPublisher.publish(event);
     }
 
     public void publishStructureChanged(UUID organizationId) {
-        eventPublisher.publishEvent(new AccommodationStructureChangedEvent(organizationId));
+        afterCommitEventPublisher.publish(new AccommodationStructureChangedEvent(organizationId));
     }
 }

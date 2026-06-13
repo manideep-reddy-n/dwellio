@@ -13,9 +13,13 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "organization_metrics_cache")
@@ -53,6 +57,13 @@ public class OrganizationMetricsCache {
 
     @Column(name = "open_complaint_count", nullable = false)
     private int openComplaintCount;
+
+    @Column(name = "avg_first_response_hours", precision = 8, scale = 2)
+    private BigDecimal avgFirstResponseHours;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "complaint_category_counts", nullable = false)
+    private Map<String, Integer> complaintCategoryCounts = new HashMap<>();
 
     @Column(name = "satisfaction_score", precision = 5, scale = 2)
     private BigDecimal satisfactionScore;

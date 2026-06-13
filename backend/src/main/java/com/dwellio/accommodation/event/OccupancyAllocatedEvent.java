@@ -6,6 +6,7 @@ public record OccupancyAllocatedEvent(
         UUID organizationId,
         UUID occupancyId,
         UUID membershipId,
+        UUID userId,
         UUID bedId,
         UUID unitSpaceId
 ) {

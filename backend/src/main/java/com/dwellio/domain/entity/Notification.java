@@ -2,6 +2,7 @@ package com.dwellio.domain.entity;
 
 import com.dwellio.common.entity.CreatedTimestampEntity;
 import com.dwellio.domain.enums.NotificationStatus;
+import com.dwellio.domain.enums.NotificationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,9 +13,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "notifications")
@@ -34,8 +39,9 @@ public class Notification extends CreatedTimestampEntity {
     @JoinColumn(name = "organization_id")
     private Organization organization;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private String type;
+    private NotificationType type;
 
     @Column(nullable = false)
     private String title;
@@ -43,11 +49,9 @@ public class Notification extends CreatedTimestampEntity {
     @Column(columnDefinition = "TEXT")
     private String body;
 
-    @Column(name = "entity_type", length = 50)
-    private String entityType;
-
-    @Column(name = "entity_id", columnDefinition = "uuid")
-    private UUID entityId;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "payload_json")
+    private Map<String, Object> payloadJson = new HashMap<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)

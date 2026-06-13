@@ -1,6 +1,9 @@
 package com.dwellio.organization.repository;
 
 import com.dwellio.domain.entity.Organization;
+import com.dwellio.domain.enums.OrganizationStatus;
+import com.dwellio.domain.enums.OrganizationType;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,4 +20,26 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
 
     @Query("SELECT COUNT(o) > 0 FROM Organization o WHERE o.slug = :slug AND o.deletedAt IS NULL")
     boolean existsActiveBySlug(@Param("slug") String slug);
+
+    @Query("""
+            SELECT o FROM Organization o
+            LEFT JOIN OrganizationMetricsCache c ON c.organizationId = o.id
+            WHERE o.deletedAt IS NULL
+              AND o.status = :status
+              AND (:city IS NULL OR LOWER(o.city) = LOWER(:city))
+              AND (:type IS NULL OR o.type = :type)
+              AND (
+                :query IS NULL OR :query = ''
+                OR LOWER(o.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(o.city) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(COALESCE(o.area, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+              )
+            ORDER BY c.searchRankScore DESC NULLS LAST, o.name ASC
+            """)
+    List<Organization> searchMarketplace(
+            @Param("status") OrganizationStatus status,
+            @Param("city") String city,
+            @Param("type") OrganizationType type,
+            @Param("query") String query
+    );
 }

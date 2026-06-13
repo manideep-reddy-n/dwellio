@@ -19,6 +19,9 @@ import com.dwellio.joinrequest.dto.SubmitJoinRequestRequest;
 import com.dwellio.joinrequest.repository.JoinRequestRepository;
 import com.dwellio.joinrequest.repository.ResidentProfileRepository;
 import com.dwellio.membership.repository.MembershipRepository;
+import com.dwellio.common.event.AfterCommitEventPublisher;
+import com.dwellio.joinrequest.event.JoinRequestRejectedEvent;
+import com.dwellio.metrics.event.MembershipActivatedEvent;
 import com.dwellio.organization.service.OrganizationService;
 import com.dwellio.role.service.RoleService;
 import java.time.Clock;
@@ -39,6 +42,7 @@ public class JoinRequestService {
     private final OrganizationService organizationService;
     private final RoleService roleService;
     private final Clock clock;
+    private final AfterCommitEventPublisher afterCommitEventPublisher;
 
     @Transactional
     public JoinRequestResponse submit(UUID organizationId, UUID userId, SubmitJoinRequestRequest request) {
@@ -105,6 +109,12 @@ public class JoinRequestService {
         joinRequest.setReviewedAt(clock.instant());
         joinRequestRepository.save(joinRequest);
 
+        afterCommitEventPublisher.publish(new MembershipActivatedEvent(
+                organizationId,
+                membership.getId(),
+                joinRequest.getUser().getId()
+        ));
+
         return toResponse(joinRequest);
     }
 
@@ -124,6 +134,14 @@ public class JoinRequestService {
         joinRequest.setReviewedAt(clock.instant());
         joinRequest.setRejectionReason(request.rejectionReason());
         joinRequestRepository.save(joinRequest);
+
+        afterCommitEventPublisher.publish(new JoinRequestRejectedEvent(
+                organizationId,
+                joinRequest.getId(),
+                joinRequest.getUser().getId(),
+                joinRequest.getOrganization().getName(),
+                request.rejectionReason()
+        ));
 
         return toResponse(joinRequest);
     }

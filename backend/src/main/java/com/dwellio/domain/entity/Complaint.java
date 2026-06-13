@@ -40,6 +40,10 @@ public class Complaint extends SoftDeletableEntity {
     @JoinColumn(name = "assigned_to_membership_id")
     private Membership assignedToMembership;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asset_id")
+    private Asset asset;
+
     @Column(nullable = false)
     private String title;
 
@@ -63,4 +67,10 @@ public class Complaint extends SoftDeletableEntity {
 
     @Column(name = "closed_at")
     private Instant closedAt;
+
+    @Column(name = "assigned_at")
+    private Instant assignedAt;
+
+    @Column(name = "first_response_at")
+    private Instant firstResponseAt;
 }

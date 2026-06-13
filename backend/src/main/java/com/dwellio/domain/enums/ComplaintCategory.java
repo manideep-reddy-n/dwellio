@@ -2,10 +2,13 @@ package com.dwellio.domain.enums;
 
 public enum ComplaintCategory {
     WIFI,
-    WATER,
-    ELECTRICITY,
-    CLEANING,
-    SECURITY,
+    FOOD,
+    HOUSEKEEPING,
     MAINTENANCE,
+    ELECTRICITY,
+    PLUMBING,
+    SECURITY,
+    NOISE,
+    PAYMENT,
     OTHER
 }

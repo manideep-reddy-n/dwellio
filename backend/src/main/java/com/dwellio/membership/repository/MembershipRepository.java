@@ -13,6 +13,17 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
     @Query("""
             SELECT m FROM Membership m
             JOIN FETCH m.role r
+            JOIN FETCH m.organization o
+            WHERE m.user.id = :userId
+              AND m.status = 'ACTIVE'
+              AND m.deletedAt IS NULL
+            ORDER BY m.joinedAt DESC
+            """)
+    List<Membership> findAllActiveByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+            SELECT m FROM Membership m
+            JOIN FETCH m.role r
             JOIN FETCH m.user u
             WHERE m.user.id = :userId
               AND m.organization.id = :organizationId
@@ -60,4 +71,44 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
             @Param("membershipId") UUID membershipId,
             @Param("organizationId") UUID organizationId
     );
+
+    @Query("""
+            SELECT m FROM Membership m
+            JOIN FETCH m.user u
+            JOIN FETCH m.role r
+            WHERE m.organization.id = :organizationId
+              AND m.status = 'ACTIVE'
+              AND m.deletedAt IS NULL
+              AND r.name = 'RESIDENT'
+            """)
+    List<Membership> findActiveResidentsByOrganizationId(@Param("organizationId") UUID organizationId);
+
+    @Query("""
+            SELECT m FROM Membership m
+            JOIN FETCH m.user u
+            JOIN FETCH m.role r
+            WHERE m.organization.id = :organizationId
+              AND m.status = 'ACTIVE'
+              AND m.deletedAt IS NULL
+              AND r.ownerRole = TRUE
+            """)
+    List<Membership> findActiveOwnersByOrganizationId(@Param("organizationId") UUID organizationId);
+
+    @Query("""
+            SELECT DISTINCT m FROM Membership m
+            JOIN FETCH m.user u
+            JOIN FETCH m.role r
+            WHERE m.organization.id = :organizationId
+              AND m.status = 'ACTIVE'
+              AND m.deletedAt IS NULL
+              AND (
+                r.ownerRole = TRUE
+                OR EXISTS (
+                    SELECT 1 FROM RolePermission rp
+                    WHERE rp.roleId = r.id
+                      AND rp.permission.code IN ('complaint:read', 'complaint:manage', 'complaint:assign')
+                )
+              )
+            """)
+    List<Membership> findActiveComplaintStaffByOrganizationId(@Param("organizationId") UUID organizationId);
 }

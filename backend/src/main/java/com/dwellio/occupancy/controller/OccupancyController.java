@@ -36,6 +36,12 @@ public class OccupancyController {
         return occupancyService.list(organizationId, membershipId);
     }
 
+    @GetMapping("/mine")
+    @PreAuthorize("@authz.hasPermission(#organizationId, 'allocation:read_own')")
+    public OccupancyResponse getMine(@PathVariable UUID organizationId) {
+        return occupancyService.getMine(organizationId);
+    }
+
     @PostMapping("/allocate")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("@authz.hasPermission(#organizationId, 'resident:manage')")

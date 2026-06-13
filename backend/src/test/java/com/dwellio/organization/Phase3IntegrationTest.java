@@ -100,6 +100,24 @@ class Phase3IntegrationTest {
         mockMvc.perform(get("/organizations/{organizationId}", organizationId)
                         .header("Authorization", "Bearer " + residentToken))
                 .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/users/me/memberships")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].organizationSlug").value("phase3-hostel"))
+                .andExpect(jsonPath("$[0].ownerRole").value(true));
+
+        mockMvc.perform(get("/users/me/memberships")
+                        .header("Authorization", "Bearer " + residentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].roleName").value("RESIDENT"));
+
+        mockMvc.perform(get("/users/me/memberships/by-slug/{slug}", "phase3-hostel")
+                        .header("Authorization", "Bearer " + residentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.organizationSlug").value("phase3-hostel"));
     }
 
     @Test

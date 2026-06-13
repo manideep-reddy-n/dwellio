@@ -11,6 +11,8 @@ import com.dwellio.bed.service.BedService;
 import com.dwellio.common.exception.BadRequestException;
 import com.dwellio.common.exception.ConflictException;
 import com.dwellio.common.exception.NotFoundException;
+import com.dwellio.common.security.AuthorizationService;
+import com.dwellio.common.security.MembershipContext;
 import com.dwellio.domain.entity.Bed;
 import com.dwellio.domain.entity.Membership;
 import com.dwellio.domain.entity.Occupancy;
@@ -37,6 +39,7 @@ public class OccupancyService {
 
     private final OccupancyRepository occupancyRepository;
     private final MembershipRepository membershipRepository;
+    private final AuthorizationService authorizationService;
     private final AccommodationGuard accommodationGuard;
     private final BedService bedService;
     private final SpaceService spaceService;
@@ -50,6 +53,14 @@ public class OccupancyService {
                 ? occupancyRepository.findAllByOrganizationId(organizationId)
                 : occupancyRepository.findAllByOrganizationIdAndMembershipId(organizationId, membershipId);
         return occupancies.stream().map(OccupancyService::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OccupancyResponse getMine(UUID organizationId) {
+        MembershipContext context = authorizationService.requirePermission(organizationId, "allocation:read_own");
+        Occupancy occupancy = occupancyRepository.findCurrentByMembershipId(context.getMembershipId())
+                .orElseThrow(() -> new NotFoundException("No current allocation"));
+        return toResponse(occupancy);
     }
 
     @Transactional
@@ -72,6 +83,7 @@ public class OccupancyService {
                 organizationId,
                 occupancy.getId(),
                 membership.getId(),
+                membership.getUser().getId(),
                 occupancy.getBed() != null ? occupancy.getBed().getId() : null,
                 occupancy.getUnitSpace() != null ? occupancy.getUnitSpace().getId() : null
         ));
@@ -133,6 +145,7 @@ public class OccupancyService {
         eventPublisher.publishOccupancyTransferred(new OccupancyTransferredEvent(
                 organizationId,
                 membership.getId(),
+                membership.getUser().getId(),
                 current.getId(),
                 newOccupancy.getId(),
                 previousBedId,
