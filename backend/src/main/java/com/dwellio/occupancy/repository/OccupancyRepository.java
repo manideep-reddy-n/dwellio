@@ -71,4 +71,57 @@ public interface OccupancyRepository extends JpaRepository<Occupancy, UUID> {
             @Param("organizationId") UUID organizationId,
             @Param("membershipId") UUID membershipId
     );
+
+    @Query("""
+            SELECT o FROM Occupancy o
+            JOIN FETCH o.membership m
+            WHERE o.current = true AND o.organization.id = :organizationId
+            AND (
+                (o.bed IS NOT NULL AND o.bed.space.floor.building.id = :buildingId)
+                OR (o.unitSpace IS NOT NULL AND o.unitSpace.floor.building.id = :buildingId)
+            )
+            """)
+    List<Occupancy> findCurrentByBuildingId(
+            @Param("organizationId") UUID organizationId,
+            @Param("buildingId") UUID buildingId
+    );
+
+    @Query("""
+            SELECT o FROM Occupancy o
+            JOIN FETCH o.membership m
+            WHERE o.current = true AND o.organization.id = :organizationId
+            AND (
+                (o.bed IS NOT NULL AND o.bed.space.floor.id = :floorId)
+                OR (o.unitSpace IS NOT NULL AND o.unitSpace.floor.id = :floorId)
+            )
+            """)
+    List<Occupancy> findCurrentByFloorId(
+            @Param("organizationId") UUID organizationId,
+            @Param("floorId") UUID floorId
+    );
+
+    @Query("""
+            SELECT o FROM Occupancy o
+            JOIN FETCH o.membership m
+            WHERE o.current = true AND o.organization.id = :organizationId
+            AND (
+                (o.bed IS NOT NULL AND o.bed.space.id = :spaceId)
+                OR (o.unitSpace IS NOT NULL AND o.unitSpace.id = :spaceId)
+            )
+            """)
+    List<Occupancy> findCurrentBySpaceId(
+            @Param("organizationId") UUID organizationId,
+            @Param("spaceId") UUID spaceId
+    );
+
+    @Query("""
+            SELECT o FROM Occupancy o
+            JOIN FETCH o.membership m
+            WHERE o.current = true AND o.organization.id = :organizationId
+            AND o.bed.id = :bedId
+            """)
+    List<Occupancy> findCurrentByBedId(
+            @Param("organizationId") UUID organizationId,
+            @Param("bedId") UUID bedId
+    );
 }

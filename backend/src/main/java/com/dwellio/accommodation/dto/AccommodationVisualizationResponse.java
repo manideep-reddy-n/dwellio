@@ -18,7 +18,8 @@ public record AccommodationVisualizationResponse(
             UUID id,
             String name,
             String code,
-            List<FloorNode> floors
+            List<FloorNode> floors,
+            LayoutDto layout
     ) {
     }
 
@@ -26,7 +27,8 @@ public record AccommodationVisualizationResponse(
             UUID id,
             int floorNumber,
             String name,
-            List<SpaceNode> spaces
+            List<SpaceNode> spaces,
+            LayoutDto layout
     ) {
     }
 
@@ -39,7 +41,8 @@ public record AccommodationVisualizationResponse(
             int capacity,
             boolean blocked,
             List<BedNode> beds,
-            OccupantSummary currentOccupant
+            OccupantSummary currentOccupant,
+            LayoutDto layout
     ) {
     }
 

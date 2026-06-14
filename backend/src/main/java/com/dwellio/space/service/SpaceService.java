@@ -14,7 +14,7 @@ import com.dwellio.domain.enums.AccommodationMode;
 import com.dwellio.domain.enums.SpaceStatus;
 import com.dwellio.domain.enums.SpaceType;
 import com.dwellio.floor.service.FloorService;
-import com.dwellio.occupancy.repository.OccupancyRepository;
+import com.dwellio.occupancy.service.OccupancyStructureReleaseService;
 import com.dwellio.space.dto.CreateSpaceRequest;
 import com.dwellio.space.dto.SpaceResponse;
 import com.dwellio.space.dto.UpdateSpaceRequest;
@@ -35,7 +35,7 @@ public class SpaceService {
     private final FloorService floorService;
     private final AccommodationGuard accommodationGuard;
     private final SpaceStatusProjectionService statusProjectionService;
-    private final OccupancyRepository occupancyRepository;
+    private final OccupancyStructureReleaseService occupancyStructureReleaseService;
     private final AccommodationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -110,9 +110,7 @@ public class SpaceService {
     @Transactional
     public void delete(UUID organizationId, UUID spaceId) {
         Space space = getActiveSpace(organizationId, spaceId);
-        if (space.getSpaceType() == SpaceType.UNIT && occupancyRepository.existsCurrentByUnitSpaceId(spaceId)) {
-            throw new BadRequestException("Cannot delete a unit with a current occupancy");
-        }
+        occupancyStructureReleaseService.releaseCurrentForSpace(organizationId, spaceId);
         space.setDeletedAt(Instant.now(clock));
         spaceRepository.save(space);
         eventPublisher.publishStructureChanged(organizationId);

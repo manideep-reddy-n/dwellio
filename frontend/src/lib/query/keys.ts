@@ -28,6 +28,11 @@ export const queryKeys = {
     unreadCount: () => [...queryKeys.all, "notifications", "unread-count"] as const,
   },
 
+  availabilityAlerts: {
+    status: (slug: string) => [...queryKeys.all, "availability-alerts", slug] as const,
+    list: () => [...queryKeys.all, "availability-alerts"] as const,
+  },
+
   dashboard: (orgId: string) => [...queryKeys.all, "dashboard", orgId] as const,
 
   liveOps: (orgId: string) => [...queryKeys.all, "live-ops", orgId] as const,
@@ -69,6 +74,12 @@ export const queryKeys = {
   },
 
   visualization: (orgId: string) => [...queryKeys.all, "visualization", orgId] as const,
+
+  payments: (orgId: string) => [...queryKeys.all, "payments", orgId] as const,
+
+  foodMenu: (orgId: string) => [...queryKeys.all, "food-menu", orgId] as const,
+
+  verification: (orgId: string) => [...queryKeys.all, "verification", orgId] as const,
 
   memberships: (orgId: string) => [...queryKeys.all, "memberships", orgId] as const,
 } as const;

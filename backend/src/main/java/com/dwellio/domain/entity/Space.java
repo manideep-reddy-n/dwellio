@@ -57,4 +57,16 @@ public class Space extends SoftDeletableEntity {
 
     @Column(name = "is_blocked", nullable = false)
     private boolean blocked;
+
+    @Column(name = "layout_x")
+    private Double layoutX;
+
+    @Column(name = "layout_y")
+    private Double layoutY;
+
+    @Column(name = "layout_width")
+    private Double layoutWidth;
+
+    @Column(name = "layout_height")
+    private Double layoutHeight;
 }

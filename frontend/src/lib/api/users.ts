@@ -10,4 +10,11 @@ export const usersApi = {
 
   getMyMembershipBySlug: (slug: string) =>
     apiRequest<UserMembership>(base, `/users/me/memberships/by-slug/${slug}`),
+
+  leaveOrganization: (organizationId: string, reason?: string) =>
+    apiRequest<{ id: string; status: string }>(
+      base,
+      `/users/me/memberships/${organizationId}/leave-request`,
+      { method: "POST", body: { reason } },
+    ),
 };

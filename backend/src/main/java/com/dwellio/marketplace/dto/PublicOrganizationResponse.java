@@ -3,9 +3,12 @@ package com.dwellio.marketplace.dto;
 import com.dwellio.domain.entity.Organization;
 import com.dwellio.domain.entity.OrganizationMetricsCache;
 import com.dwellio.domain.enums.AccommodationMode;
+import com.dwellio.domain.enums.HostelAudience;
+import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record PublicOrganizationResponse(
@@ -14,26 +17,42 @@ public record PublicOrganizationResponse(
         String name,
         String description,
         OrganizationType type,
+        HostelAudience hostelAudience,
         AccommodationMode accommodationMode,
         String city,
         String area,
+        BigDecimal latitude,
+        BigDecimal longitude,
         String contactPhone,
         String contactEmail,
-        PublicOrganizationMetrics metrics
+        String logoUrl,
+        boolean verified,
+        PublicOrganizationMetrics metrics,
+        List<PublicAmenityResponse> amenities
 ) {
-    public static PublicOrganizationResponse from(Organization organization, OrganizationMetricsCache cache) {
+    public static PublicOrganizationResponse from(
+            Organization organization,
+            OrganizationMetricsCache cache,
+            List<PublicAmenityResponse> amenities
+    ) {
         return new PublicOrganizationResponse(
                 organization.getId(),
                 organization.getSlug(),
                 organization.getName(),
                 organization.getDescription(),
                 organization.getType(),
+                organization.getHostelAudience(),
                 organization.getAccommodationMode(),
                 organization.getCity(),
                 organization.getArea(),
+                organization.getLatitude(),
+                organization.getLongitude(),
                 organization.getContactPhone(),
                 organization.getContactEmail(),
-                PublicOrganizationMetrics.from(cache)
+                organization.getLogoUrl(),
+                organization.getStatus() == OrganizationStatus.VERIFIED,
+                PublicOrganizationMetrics.from(cache),
+                amenities
         );
     }
 

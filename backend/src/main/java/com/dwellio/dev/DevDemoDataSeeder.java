@@ -17,11 +17,14 @@ import com.dwellio.domain.enums.AnnouncementType;
 import com.dwellio.domain.enums.ComplaintCategory;
 import com.dwellio.domain.enums.ComplaintPriority;
 import com.dwellio.domain.enums.ComplaintStatus;
+import com.dwellio.domain.enums.HostelAudience;
+import com.dwellio.domain.enums.MealType;
 import com.dwellio.domain.enums.MembershipStatus;
 import com.dwellio.domain.enums.NotificationStatus;
 import com.dwellio.domain.enums.NotificationType;
 import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
+import com.dwellio.domain.enums.HostelAudience;
 import com.dwellio.floor.dto.CreateFloorRequest;
 import com.dwellio.floor.service.FloorService;
 import com.dwellio.membership.dto.StaffInviteRequest;
@@ -33,6 +36,7 @@ import com.dwellio.notification.service.NotificationService;
 import com.dwellio.occupancy.dto.AllocateOccupancyRequest;
 import com.dwellio.occupancy.service.OccupancyService;
 import com.dwellio.organization.dto.CreateOrganizationRequest;
+import java.math.BigDecimal;
 import com.dwellio.organization.repository.OrganizationRepository;
 import com.dwellio.organization.service.OrganizationService;
 import com.dwellio.review.repository.ReviewRepository;
@@ -76,6 +80,8 @@ public class DevDemoDataSeeder {
     public static final String STAFF_EMAIL = "staff@example.com";
     public static final String RESIDENT_EMAIL = "resident@example.com";
     public static final String PLATFORM_ADMIN_EMAIL = "platform-admin@example.com";
+    public static final String ADMIN_CONSOLE_EMAIL = "admin@dwellio.local";
+    public static final String ADMIN_CONSOLE_PASSWORD = "12345678";
     public static final String HOSTEL_SLUG = "sunrise-hostel";
     public static final String GATED_SLUG = "green-valley-residences";
 
@@ -110,6 +116,8 @@ public class DevDemoDataSeeder {
         try {
             if (organizationRepository.findActiveBySlug(HOSTEL_SLUG).isPresent()) {
                 backfillNotificationsIfMissing();
+                backfillMapCoordinatesIfMissing();
+                ensureAdminConsoleUser();
                 log.info("Demo data already present — skipping full seed");
                 return;
             }
@@ -142,10 +150,11 @@ public class DevDemoDataSeeder {
      * Core demo entities (users → orgs → memberships → ops data). Commits before notifications.
      */
     private SeedContext seedCoreData() {
-        createUser(PLATFORM_ADMIN_EMAIL, "Platform Admin", true);
-        User owner = createUser(OWNER_EMAIL, "Demo Owner", false);
-        User staff = createUser(STAFF_EMAIL, "Demo Staff", false);
-        User resident = createUser(RESIDENT_EMAIL, "Demo Resident", false);
+        createUser(PLATFORM_ADMIN_EMAIL, "Platform Admin", true, DEMO_PASSWORD);
+        createUser(ADMIN_CONSOLE_EMAIL, "Dwellio Admin", true, ADMIN_CONSOLE_PASSWORD);
+        User owner = createUser(OWNER_EMAIL, "Demo Owner", false, DEMO_PASSWORD);
+        User staff = createUser(STAFF_EMAIL, "Demo Staff", false, DEMO_PASSWORD);
+        User resident = createUser(RESIDENT_EMAIL, "Demo Resident", false, DEMO_PASSWORD);
 
         UUID hostelId = createHostelOrganization(owner);
         UUID gatedId = createGatedOrganization(owner);
@@ -160,6 +169,7 @@ public class DevDemoDataSeeder {
         seedGatedAccommodation(gatedId);
         seedComplaints(hostelId, residentMembership, staffMembership);
         seedAnnouncements(hostelId, owner);
+        seedFoodMenu(hostelId);
         seedReview(hostelId, residentMembership);
 
         metricsProjectionService.rebuild(hostelId);
@@ -188,6 +198,25 @@ public class DevDemoDataSeeder {
                     }
                 })
         );
+    }
+
+    private void backfillMapCoordinatesIfMissing() {
+        organizationRepository.findActiveBySlug(HOSTEL_SLUG).ifPresent(org -> {
+            if (org.getLatitude() == null || org.getLongitude() == null) {
+                org.setLatitude(new BigDecimal("17.448294"));
+                org.setLongitude(new BigDecimal("78.391487"));
+                organizationRepository.save(org);
+                log.info("Backfilled map coordinates for {}", HOSTEL_SLUG);
+            }
+        });
+        organizationRepository.findActiveBySlug(GATED_SLUG).ifPresent(org -> {
+            if (org.getLatitude() == null || org.getLongitude() == null) {
+                org.setLatitude(new BigDecimal("17.440081"));
+                org.setLongitude(new BigDecimal("78.348912"));
+                organizationRepository.save(org);
+                log.info("Backfilled map coordinates for {}", GATED_SLUG);
+            }
+        });
     }
 
     private void seedNotificationsSafe(UUID residentUserId, UUID organizationId) {
@@ -254,12 +283,27 @@ public class DevDemoDataSeeder {
         }
     }
 
-    private User createUser(String email, String fullName, boolean platformAdmin) {
+    private void ensureAdminConsoleUser() {
+        userRepository.findActiveByEmail(ADMIN_CONSOLE_EMAIL).ifPresentOrElse(
+                user -> {
+                    if (!user.isPlatformAdmin()) {
+                        user.setPlatformAdmin(true);
+                        userRepository.save(user);
+                    }
+                },
+                () -> {
+                    log.info("Seeding admin console user (username: admin)");
+                    createUser(ADMIN_CONSOLE_EMAIL, "Dwellio Admin", true, ADMIN_CONSOLE_PASSWORD);
+                }
+        );
+    }
+
+    private User createUser(String email, String fullName, boolean platformAdmin, String password) {
         User user = new User();
         user.setId(UUID.randomUUID());
         user.setEmail(email);
         user.setFullName(fullName);
-        user.setPasswordHash(passwordEncoder.encode(DEMO_PASSWORD));
+        user.setPasswordHash(passwordEncoder.encode(password));
         user.setPlatformAdmin(platformAdmin);
         user.setEmailVerified(true);
         return userRepository.save(user);
@@ -270,12 +314,15 @@ public class DevDemoDataSeeder {
                 "Sunrise Hostel",
                 HOSTEL_SLUG,
                 OrganizationType.HOSTEL,
+                HostelAudience.CO_ED,
                 "A verified demo hostel in Madhapur with beds, operations data, and resident workflows.",
                 "Hyderabad",
                 "Madhapur",
                 "Telangana",
                 "500081",
                 "12 Tech Park Road",
+                new BigDecimal("17.448294"),
+                new BigDecimal("78.391487"),
                 "+91 98765 43210",
                 "hello@sunrise-hostel.demo"
         ));
@@ -288,12 +335,15 @@ public class DevDemoDataSeeder {
                 "Green Valley Residences",
                 GATED_SLUG,
                 OrganizationType.GATED_COMMUNITY,
+                null,
                 "A verified gated community demo with unit-based accommodation and marketplace metrics.",
                 "Hyderabad",
                 "Gachibowli",
                 "Telangana",
                 "500032",
                 "45 Valley View Lane",
+                new BigDecimal("17.440081"),
+                new BigDecimal("78.348912"),
                 "+91 98765 12345",
                 "contact@green-valley.demo"
         ));
@@ -361,6 +411,7 @@ public class DevDemoDataSeeder {
                         "resident:read",
                         "resident:manage",
                         "building:manage",
+                        "payment:manage",
                         "notification:read"
                 )
         ));
@@ -400,7 +451,8 @@ public class DevDemoDataSeeder {
                 residentMembershipId,
                 bedA.id(),
                 null,
-                LocalDate.now(clock).minusDays(10)
+                LocalDate.now(clock).minusDays(10),
+                new BigDecimal("8000")
         ));
     }
 
@@ -475,6 +527,35 @@ public class DevDemoDataSeeder {
                 "Water supply may be interrupted on Sunday 9am–11am.", AnnouncementType.MAINTENANCE, now.minus(2, ChronoUnit.DAYS));
         saveAnnouncement(organizationId, owner, "Community movie night",
                 "Join us Friday at 7pm in the common lounge.", AnnouncementType.EVENT, now.minus(1, ChronoUnit.DAYS));
+    }
+
+    private void seedFoodMenu(UUID organizationId) {
+        String[][] weekly = {
+                {"Idli, Sambar, Chutney", "Rice, Dal, Curry", "Chapati, Paneer curry"},
+                {"Poha, Tea", "Veg biryani, Raita", "Dosa, Sambar"},
+                {"Upma, Coffee", "Roti, Rajma", "Fried rice, Manchurian"},
+                {"Bread, Butter, Jam", "Lemon rice, Papad", "Paratha, Curd"},
+                {"Masala dosa", "Meals — rice, sambar, poriyal", "Noodles, soup"},
+                {"Aloo paratha", "Pulao, Raita", "Pasta, garlic bread"},
+                {"Pancakes, Fruit", "Special thali", "Biryani, Salad"},
+        };
+        for (int day = 1; day <= 7; day++) {
+            MealType[] meals = MealType.values();
+            for (int mealIndex = 0; mealIndex < meals.length; mealIndex++) {
+                jdbcTemplate.update(
+                        """
+                        INSERT INTO food_menu_slots (id, organization_id, day_of_week, meal_type, items, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+                        ON CONFLICT (organization_id, day_of_week, meal_type) DO NOTHING
+                        """,
+                        UUID.randomUUID(),
+                        organizationId,
+                        (short) day,
+                        meals[mealIndex].name(),
+                        weekly[day - 1][mealIndex]
+                );
+            }
+        }
     }
 
     private void saveAnnouncement(

@@ -39,4 +39,16 @@ public class Floor extends SoftDeletableEntity {
 
     @Column(length = 100)
     private String name;
+
+    @Column(name = "layout_x")
+    private Double layoutX;
+
+    @Column(name = "layout_y")
+    private Double layoutY;
+
+    @Column(name = "layout_width")
+    private Double layoutWidth;
+
+    @Column(name = "layout_height")
+    private Double layoutHeight;
 }

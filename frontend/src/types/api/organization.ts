@@ -1,5 +1,6 @@
 import type {
   AccommodationMode,
+  HostelAudience,
   OrganizationStatus,
   OrganizationType,
 } from "@/types/enums";
@@ -10,6 +11,7 @@ export interface Organization {
   name: string;
   description: string | null;
   type: OrganizationType;
+  hostelAudience: HostelAudience | null;
   accommodationMode: AccommodationMode;
   status: OrganizationStatus;
   city: string;
@@ -17,8 +19,12 @@ export interface Organization {
   state: string | null;
   postalCode: string | null;
   addressLine: string | null;
+  latitude: number | null;
+  longitude: number | null;
   contactPhone: string | null;
   contactEmail: string | null;
+  defaultMonthlyRent: number | null;
+  logoUrl: string | null;
   profileCompletenessScore: number;
   createdAt: string;
   updatedAt: string;
@@ -28,14 +34,18 @@ export interface CreateOrganizationInput {
   name: string;
   slug: string;
   type: OrganizationType;
+  hostelAudience?: HostelAudience;
   description?: string;
   city: string;
   area?: string;
   state?: string;
   postalCode?: string;
   addressLine?: string;
+  latitude?: number;
+  longitude?: number;
   contactPhone?: string;
   contactEmail?: string;
+  defaultMonthlyRent?: number;
 }
 
 export interface UpdateOrganizationInput {
@@ -46,6 +56,9 @@ export interface UpdateOrganizationInput {
   state?: string;
   postalCode?: string;
   addressLine?: string;
+  latitude?: number;
+  longitude?: number;
   contactPhone?: string;
   contactEmail?: string;
+  defaultMonthlyRent?: number;
 }

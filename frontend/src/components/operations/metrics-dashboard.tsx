@@ -11,6 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/shared/error-state";
+import { formatPercent } from "@/lib/format/percent";
 import type { OrganizationMetrics } from "@/types/api/dashboard";
 
 interface MetricsDashboardProps {
@@ -68,8 +69,7 @@ export function MetricsDashboard({ metrics, isLoading, isError, onRetry }: Metri
 
   if (!metrics) return null;
 
-  const occupancy =
-    metrics.occupancyRate != null ? `${Math.round(metrics.occupancyRate * 100)}%` : "—";
+  const occupancy = formatPercent(metrics.occupancyRate);
   const rating = metrics.avgRating != null ? metrics.avgRating.toFixed(1) : "—";
 
   return (
@@ -112,11 +112,7 @@ export function MetricsDashboard({ metrics, isLoading, isError, onRetry }: Metri
       {(metrics.resolutionRate != null || metrics.satisfactionScore != null) && (
         <MetricCard
           label="Resolution rate"
-          value={
-            metrics.resolutionRate != null
-              ? `${Math.round(metrics.resolutionRate * 100)}%`
-              : "—"
-          }
+          value={formatPercent(metrics.resolutionRate)}
           sub={
             metrics.satisfactionScore != null
               ? `Satisfaction ${metrics.satisfactionScore.toFixed(0)}`

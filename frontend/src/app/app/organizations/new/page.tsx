@@ -1,15 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageTransition } from "@/components/shared/page-transition";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LocationPicker, type LocationValue } from "@/components/maps/location-picker";
+import { DEFAULT_MAP_CENTER } from "@/lib/maps/geocoding";
 import { useCreateOrganization } from "@/hooks/use-organization";
-import type { OrganizationType } from "@/types/enums";
+import { useMyMemberships } from "@/hooks/use-memberships";
+import { canCreateOrganization, resolveAppHome } from "@/lib/navigation/app-routing";
+import { isHostelType } from "@/lib/copy/home-messaging";
+import type { HostelAudience, OrganizationType } from "@/types/enums";
 import { toast } from "sonner";
 
 const orgTypes: OrganizationType[] = [
@@ -30,12 +36,35 @@ function slugify(value: string) {
 export default function NewOrganizationPage() {
   const router = useRouter();
   const create = useCreateOrganization();
+  const { data: memberships = [], isLoading } = useMyMemberships();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [type, setType] = useState<OrganizationType>("HOSTEL");
+  const [hostelAudience, setHostelAudience] = useState<HostelAudience>("CO_ED");
   const [city, setCity] = useState("");
+  const [area, setArea] = useState("");
+  const [addressLine, setAddressLine] = useState("");
+  const [location, setLocation] = useState<LocationValue>({
+    latitude: DEFAULT_MAP_CENTER.lat,
+    longitude: DEFAULT_MAP_CENTER.lng,
+  });
   const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!canCreateOrganization(memberships)) {
+      router.replace(resolveAppHome(memberships));
+    }
+  }, [isLoading, memberships, router]);
+
+  if (isLoading || !canCreateOrganization(memberships)) {
+    return (
+      <PageTransition>
+        <Skeleton className="mx-auto h-64 max-w-lg rounded-xl" />
+      </PageTransition>
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,12 +72,21 @@ export default function NewOrganizationPage() {
       toast.error("Name, slug, and city are required");
       return;
     }
+    if (isHostelType(type) && !hostelAudience) {
+      toast.error("Select whether the hostel/PG is for boys, girls, or co-ed");
+      return;
+    }
     try {
       const org = await create.mutateAsync({
         name: name.trim(),
         slug: slug.trim(),
         type,
+        hostelAudience: isHostelType(type) ? hostelAudience : undefined,
         city: city.trim(),
+        area: area.trim() || undefined,
+        addressLine: addressLine.trim() || undefined,
+        latitude: location.latitude,
+        longitude: location.longitude,
         description: description.trim() || undefined,
       });
       toast.success("Organization created");
@@ -60,7 +98,7 @@ export default function NewOrganizationPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-lg space-y-6">
+      <div className="mx-auto max-w-2xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Create organization</h1>
           <p className="mt-1 text-muted-foreground">
@@ -110,10 +148,48 @@ export default function NewOrganizationPage() {
                   ))}
                 </select>
               </div>
+              {isHostelType(type) && (
+                <div className="space-y-1">
+                  <Label htmlFor="audience">Who can stay here?</Label>
+                  <select
+                    id="audience"
+                    className="flex h-9 w-full rounded-lg border bg-background px-3 text-sm"
+                    value={hostelAudience}
+                    onChange={(e) => setHostelAudience(e.target.value as HostelAudience)}
+                  >
+                    <option value="BOYS">Boys only</option>
+                    <option value="GIRLS">Girls only</option>
+                    <option value="CO_ED">Co-ed (boys & girls)</option>
+                  </select>
+                </div>
+              )}
               <div className="space-y-1">
                 <Label htmlFor="city">City</Label>
                 <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
               </div>
+              <div className="space-y-1">
+                <Label htmlFor="area">Area / locality</Label>
+                <Input id="area" value={area} onChange={(e) => setArea(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="address">Street address</Label>
+                <Input
+                  id="address"
+                  value={addressLine}
+                  onChange={(e) => setAddressLine(e.target.value)}
+                />
+              </div>
+
+              <LocationPicker
+                value={location}
+                onChange={setLocation}
+                onAddressFields={(fields) => {
+                  if (fields.city) setCity(fields.city);
+                  if (fields.area) setArea(fields.area);
+                  if (fields.addressLine) setAddressLine(fields.addressLine);
+                }}
+              />
+
               <div className="space-y-1">
                 <Label htmlFor="desc">Description</Label>
                 <Textarea

@@ -4,6 +4,7 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { OperationsShell } from "@/components/operations/operations-shell";
 import { OpsGuard } from "@/components/operations/ops-guard";
 import { OrgSettingsForm } from "@/components/operations/org-settings-form";
+import { VerificationCenter } from "@/components/operations/verification-center";
 import { usePermissions } from "@/hooks/use-permissions";
 import { PERMISSIONS } from "@/lib/permissions/codes";
 
@@ -21,6 +22,11 @@ export default function SettingsPage() {
           description="Update your organization profile and contact details."
         >
           {orgId && <OrgSettingsForm orgId={orgId} />}
+          {orgId && (
+            <div className="mt-6">
+              <VerificationCenter orgId={orgId} />
+            </div>
+          )}
         </OperationsShell>
       </OpsGuard>
     </PageTransition>

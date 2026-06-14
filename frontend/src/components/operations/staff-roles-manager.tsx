@@ -32,10 +32,11 @@ interface StaffRolesManagerProps {
 
 export function StaffRolesManager({ orgId, isLoading, isError, onRetry }: StaffRolesManagerProps) {
   const { data: roles, isLoading: rolesLoading, isError: rolesError, refetch } = useRoles(orgId);
-  const { create, remove } = useRoleMutations(orgId);
+  const { create, update, remove } = useRoleMutations(orgId);
   const invite = useInviteStaff(orgId);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState("");
   const [roleName, setRoleName] = useState("");
@@ -62,20 +63,43 @@ export function StaffRolesManager({ orgId, isLoading, isError, onRetry }: StaffR
     }
   }
 
-  async function handleCreateRole() {
+  async function handleSaveRole() {
     if (!roleName.trim() || !rolePerms.length) {
       toast.error("Name and at least one permission required");
       return;
     }
     try {
-      await create.mutateAsync({ name: roleName.trim(), permissions: rolePerms });
-      toast.success("Role created");
+      if (editingRole) {
+        await update.mutateAsync({
+          id: editingRole.id,
+          input: { name: roleName.trim(), permissions: rolePerms },
+        });
+        toast.success("Role updated");
+      } else {
+        await create.mutateAsync({ name: roleName.trim(), permissions: rolePerms });
+        toast.success("Role created");
+      }
       setRoleOpen(false);
+      setEditingRole(null);
       setRoleName("");
       setRolePerms([]);
     } catch {
-      toast.error("Could not create role");
+      toast.error(editingRole ? "Could not update role" : "Could not create role");
     }
+  }
+
+  function openCreateRole() {
+    setEditingRole(null);
+    setRoleName("");
+    setRolePerms([]);
+    setRoleOpen(true);
+  }
+
+  function openEditRole(role: Role) {
+    setEditingRole(role);
+    setRoleName(role.name);
+    setRolePerms([...role.permissions]);
+    setRoleOpen(true);
   }
 
   function togglePerm(code: string) {
@@ -134,11 +158,20 @@ export function StaffRolesManager({ orgId, isLoading, isError, onRetry }: StaffR
           </DialogContent>
         </Dialog>
 
-        <Dialog open={roleOpen} onOpenChange={setRoleOpen}>
-          <DialogTrigger render={<Button variant="outline" />}>New role</DialogTrigger>
+        <Button variant="outline" onClick={openCreateRole}>
+          New role
+        </Button>
+
+        <Dialog
+          open={roleOpen}
+          onOpenChange={(open) => {
+            setRoleOpen(open);
+            if (!open) setEditingRole(null);
+          }}
+        >
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Create role</DialogTitle>
+              <DialogTitle>{editingRole ? "Edit role" : "Create role"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1">
@@ -169,8 +202,11 @@ export function StaffRolesManager({ orgId, isLoading, isError, onRetry }: StaffR
               <Button variant="outline" onClick={() => setRoleOpen(false)}>
                 Cancel
               </Button>
-              <Button disabled={create.isPending} onClick={() => void handleCreateRole()}>
-                Create
+              <Button
+                disabled={create.isPending || update.isPending}
+                onClick={() => void handleSaveRole()}
+              >
+                {editingRole ? "Save changes" : "Create"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -185,6 +221,7 @@ export function StaffRolesManager({ orgId, isLoading, isError, onRetry }: StaffR
             <RoleCard
               key={role.id}
               role={role}
+              onEdit={() => openEditRole(role)}
               onDelete={() => {
                 if (role.system || role.ownerRole) {
                   toast.error("System roles cannot be deleted");
@@ -200,7 +237,15 @@ export function StaffRolesManager({ orgId, isLoading, isError, onRetry }: StaffR
   );
 }
 
-function RoleCard({ role, onDelete }: { role: Role; onDelete: () => void }) {
+function RoleCard({
+  role,
+  onEdit,
+  onDelete,
+}: {
+  role: Role;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
@@ -221,9 +266,14 @@ function RoleCard({ role, onDelete }: { role: Role; onDelete: () => void }) {
           )}
         </div>
         {!role.system && !role.ownerRole && (
-          <Button size="sm" variant="outline" onClick={onDelete}>
-            Delete
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={onEdit}>
+              Edit
+            </Button>
+            <Button size="sm" variant="outline" onClick={onDelete}>
+              Delete
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

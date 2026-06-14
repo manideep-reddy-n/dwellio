@@ -1,9 +1,5 @@
-import { ResidentShell } from "@/components/resident/resident-shell";
+import { ResidentLayoutShell } from "@/components/resident/resident-layout-shell";
 
-export default function ResidentLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <ResidentShell>{children}</ResidentShell>;
+export default function ResidentLayout({ children }: { children: React.ReactNode }) {
+  return <ResidentLayoutShell>{children}</ResidentLayoutShell>;
 }

@@ -1,10 +1,12 @@
-import type { AccommodationMode } from "@/types/enums";
+import type { AccommodationMode, OrganizationType } from "@/types/enums";
 
 export interface UserMembership {
   membershipId: string;
   organizationId: string;
   organizationSlug: string;
   organizationName: string;
+  organizationType: OrganizationType;
+  logoUrl: string | null;
   accommodationMode: AccommodationMode;
   roleName: string;
   ownerRole: boolean;

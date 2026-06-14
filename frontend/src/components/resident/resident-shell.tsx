@@ -8,7 +8,7 @@ export function ResidentShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="pb-16 md:pb-0">{children}</div>
+      <div className="pb-20 md:pb-0">{children}</div>
       {orgSlug ? <ResidentBottomNav orgSlug={orgSlug} /> : null}
     </>
   );

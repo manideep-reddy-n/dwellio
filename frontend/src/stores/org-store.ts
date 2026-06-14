@@ -1,11 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { AccommodationMode } from "@/types/enums";
+import type { AccommodationMode, OrganizationType } from "@/types/enums";
 
 export interface OrgContext {
   id: string;
   slug: string;
   name: string;
+  organizationType: OrganizationType;
+  logoUrl: string | null;
   accommodationMode: AccommodationMode;
   permissions: string[];
   isOwner: boolean;

@@ -12,7 +12,7 @@ import { ApiError } from "@/lib/api/client";
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, isAuthenticated, sessionReady } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +32,12 @@ function LoginForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (sessionReady && isAuthenticated) {
+    return (
+      <div className="text-center text-sm text-muted-foreground">Redirecting to your dashboard…</div>
+    );
   }
 
   return (

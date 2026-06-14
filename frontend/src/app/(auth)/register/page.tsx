@@ -2,15 +2,40 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Building2, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api/client";
+import { cn } from "@/lib/utils";
+
+type AccountIntent = "resident" | "owner";
+
+const intentOptions: {
+  id: AccountIntent;
+  label: string;
+  description: string;
+  icon: typeof UserRound;
+}[] = [
+  {
+    id: "resident",
+    label: "I'm a resident",
+    description: "Find a stay and join a property from the marketplace.",
+    icon: UserRound,
+  },
+  {
+    id: "owner",
+    label: "I manage a property",
+    description: "Create an organization and run operations for your building.",
+    icon: Building2,
+  },
+];
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const [intent, setIntent] = useState<AccountIntent>("resident");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,7 +48,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register({ fullName, email, password });
-      window.location.assign("/app");
+      const destination = intent === "owner" ? "/app/organizations/new" : "/explore";
+      window.location.assign(destination);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Registration failed");
     } finally {
@@ -35,10 +61,33 @@ export default function RegisterPage() {
     <Card>
       <CardHeader>
         <CardTitle>Create account</CardTitle>
-        <CardDescription>Join Dwellio as a resident or property owner.</CardDescription>
+        <CardDescription>Choose how you will use Dwellio, then set up your profile.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>I want to</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {intentOptions.map(({ id, label, description, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setIntent(id)}
+                  className={cn(
+                    "flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-colors",
+                    intent === id
+                      ? "border-teal-600 bg-teal-50/80 ring-1 ring-teal-600/30"
+                      : "hover:bg-muted/50",
+                  )}
+                >
+                  <Icon className="size-5 text-teal-600" />
+                  <span className="text-sm font-medium">{label}</span>
+                  <span className="text-xs text-muted-foreground">{description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="fullName">Full name</Label>
             <Input

@@ -5,6 +5,7 @@ import { organizationsApi } from "@/lib/api/organizations";
 import { useAuthReady } from "@/hooks/use-auth-ready";
 import { queryKeys } from "@/lib/query/keys";
 import { queryDefaults } from "@/lib/query/defaults";
+import { useOrgStore } from "@/stores/org-store";
 import type { CreateOrganizationInput, UpdateOrganizationInput } from "@/types/api/organization";
 
 export function useOrganization(orgId: string | undefined) {
@@ -45,6 +46,29 @@ export function useUpdateOrganization(orgId: string | undefined) {
 
   return useMutation({
     mutationFn: (input: UpdateOrganizationInput) => organizationsApi.update(orgId!, input),
+    onSettled: () => {
+      if (!orgId) return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.organizations.detail(orgId) });
+    },
+  });
+}
+
+export function useUploadOrganizationLogo(orgId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => organizationsApi.uploadLogo(orgId!, file),
+    onSuccess: (organization) => {
+      if (!orgId) return;
+      const active = useOrgStore.getState().activeOrg;
+      if (active?.id === orgId) {
+        useOrgStore.getState().setActiveOrg({
+          ...active,
+          logoUrl: organization.logoUrl,
+        });
+      }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.me.memberships() });
+    },
     onSettled: () => {
       if (!orgId) return;
       void queryClient.invalidateQueries({ queryKey: queryKeys.organizations.detail(orgId) });

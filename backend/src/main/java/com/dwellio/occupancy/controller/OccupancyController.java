@@ -4,6 +4,7 @@ import com.dwellio.occupancy.dto.AllocateOccupancyRequest;
 import com.dwellio.occupancy.dto.OccupancyResponse;
 import com.dwellio.occupancy.dto.ReleaseOccupancyRequest;
 import com.dwellio.occupancy.dto.TransferOccupancyRequest;
+import com.dwellio.occupancy.dto.UpdateOccupancyRentRequest;
 import com.dwellio.occupancy.service.OccupancyService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -59,6 +61,16 @@ public class OccupancyController {
             @Valid @RequestBody TransferOccupancyRequest request
     ) {
         return occupancyService.transfer(organizationId, request);
+    }
+
+    @PatchMapping("/{occupancyId}/rent")
+    @PreAuthorize("@authz.hasPermission(#organizationId, 'resident:manage')")
+    public OccupancyResponse updateRent(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID occupancyId,
+            @Valid @RequestBody UpdateOccupancyRentRequest request
+    ) {
+        return occupancyService.updateRent(organizationId, occupancyId, request);
     }
 
     @PostMapping("/{occupancyId}/release")

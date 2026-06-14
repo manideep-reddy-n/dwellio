@@ -11,13 +11,14 @@ export const orgTypeLabels: Record<OrganizationType, string> = {
 
 export function trustInputFromMetrics(
   metrics: PublicOrganizationMetrics,
+  verified = false,
 ): TrustScoreInput {
   return {
     avgFirstResponseHours: metrics.avgFirstResponseHours,
     resolutionRate: metrics.resolutionRate,
     avgRating: metrics.avgRating,
     reviewCount: metrics.reviewCount,
-    verificationStatus: "VERIFIED",
+    verificationStatus: verified ? "VERIFIED" : "DRAFT",
   };
 }
 

@@ -1,21 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  Bell,
-  LayoutDashboard,
-  Radio,
-  Search,
-} from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Compass, Home, Menu, Radio, Search } from "lucide-react";
+import { AccountMenu } from "@/components/layout/account-menu";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { OrgSwitcher } from "@/components/layout/org-switcher";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { siteConfig } from "@/config/site";
-import { useAuth } from "@/hooks/use-auth";
-import { useUnreadNotificationCount } from "@/hooks/use-unread-notifications";
-import { useOrgStore } from "@/stores/org-store";
+import { useMyMemberships } from "@/hooks/use-memberships";
+import { usePermissions } from "@/hooks/use-permissions";
+import {
+  activeOrgNav,
+  isResidentOnlyUser,
+  orgHomePath,
+  resolveAppHome,
+} from "@/lib/navigation/app-routing";
 import { useUiStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 
@@ -23,89 +31,149 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
+const navIcons = {
+  Live: Radio,
+  Home: Home,
+} as const;
+
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
-  const activeOrg = useOrgStore((s) => s.activeOrg);
-  const unreadCount = useUnreadNotificationCount();
+  const router = useRouter();
+  const { activeOrg, permissions, isOwner } = usePermissions();
+  const { data: memberships = [] } = useMyMemberships();
   const toggleCommandPalette = useUiStore((s) => s.toggleCommandPalette);
-  const isPlatformAdmin = user?.platformAdmin;
 
   const orgSlug = activeOrg?.slug;
-  const liveHref = orgSlug ? `/app/${orgSlug}/operations/live` : "/app/organizations";
-
-  const navItems = orgSlug
-    ? [
-        { href: liveHref, label: "Live", icon: Radio },
-        { href: `/app/${orgSlug}/operations`, label: "Operations", icon: LayoutDashboard },
-      ]
-    : [];
+  const homeHref = resolveAppHome(memberships);
+  const residentOnly = isResidentOnlyUser(memberships);
+  const navItems = orgSlug ? activeOrgNav(orgSlug, permissions, isOwner) : [];
+  const hasOrgHomeNav = navItems.some((item) => item.label === "Home");
+  const isResidentRoute = Boolean(orgSlug && pathname.startsWith(`/app/${orgSlug}/resident`));
 
   return (
     <div className="flex min-h-screen flex-col">
       <CommandPalette />
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link href="/app" className="shrink-0 font-semibold">
+        <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-none sm:gap-3">
+            <Link href={homeHref} className="shrink-0 font-semibold">
               {siteConfig.name}
             </Link>
-            <OrgSwitcher />
+            <div className="min-w-0 flex-1 sm:flex-none">
+              <OrgSwitcher />
+            </div>
           </div>
 
-          <nav className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden gap-2 text-muted-foreground sm:inline-flex"
-              onClick={toggleCommandPalette}
-            >
-              <Search className="size-3.5" />
-              <span className="text-xs">Ctrl K</span>
-            </Button>
-            {navItems.map(({ href, label, icon: Icon }) => (
+          <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+            <div className="hidden items-center gap-1 md:flex">
+              {!hasOrgHomeNav && (
+                <Link
+                  href="/"
+                  className={cn(
+                    buttonVariants({ variant: pathname === "/" ? "secondary" : "ghost", size: "sm" }),
+                    "gap-1.5",
+                  )}
+                >
+                  <Home className="size-4" />
+                  <span className="hidden sm:inline">Home</span>
+                </Link>
+              )}
               <Link
-                key={href}
-                href={href}
+                href="/explore"
                 className={cn(
                   buttonVariants({
-                    variant: pathname.startsWith(href) ? "secondary" : "ghost",
+                    variant: pathname.startsWith("/explore") ? "secondary" : "ghost",
                     size: "sm",
                   }),
                   "gap-1.5",
                 )}
               >
-                <Icon className="size-4" />
-                <span className="hidden sm:inline">{label}</span>
+                <Compass className="size-4" />
+                <span className="hidden sm:inline">Explore</span>
               </Link>
-            ))}
-            <Link
-              href="/app/notifications"
-              className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "relative")}
-              title="Notifications"
-            >
-              <Bell className="size-4" />
-              {unreadCount > 0 && (
-                <Badge className="absolute -right-1 -top-1 size-4 justify-center p-0 text-[10px]">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </Badge>
+              {residentOnly && memberships[0] && (
+                <Link
+                  href={orgHomePath(memberships[0])}
+                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+                >
+                  My stay
+                </Link>
               )}
-            </Link>
-            {isPlatformAdmin && (
-              <Link
-                href="/admin"
-                className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden sm:inline-flex")}
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden gap-2 text-muted-foreground lg:inline-flex"
+                onClick={toggleCommandPalette}
               >
-                Admin
-              </Link>
+                <Search className="size-3.5" />
+                <span className="text-xs">Ctrl K</span>
+              </Button>
+              {navItems.map(({ href, label }) => {
+                const Icon = navIcons[label as keyof typeof navIcons] ?? Home;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      buttonVariants({
+                        variant: pathname.startsWith(href) ? "secondary" : "ghost",
+                        size: "sm",
+                      }),
+                      "gap-1.5",
+                    )}
+                  >
+                    <Icon className="size-4" />
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {(navItems.length > 0 || !hasOrgHomeNav) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
+                  aria-label="Open navigation menu"
+                >
+                  <Menu className="size-5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  {!hasOrgHomeNav && (
+                    <DropdownMenuItem onClick={() => router.push("/")}>
+                      Marketing home
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => router.push("/explore")}>
+                    Explore
+                  </DropdownMenuItem>
+                  {residentOnly && memberships[0] && (
+                    <DropdownMenuItem onClick={() => router.push(orgHomePath(memberships[0]))}>
+                      My stay
+                    </DropdownMenuItem>
+                  )}
+                  {navItems.length > 0 && <DropdownMenuSeparator />}
+                  {navItems.map(({ href, label }) => (
+                    <DropdownMenuItem key={href} onClick={() => router.push(href)}>
+                      {label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-            <Button variant="ghost" size="sm" onClick={() => void logout()}>
-              {user?.fullName?.split(" ")[0] ?? "Account"}
-            </Button>
+
+            <NotificationBell />
+            <AccountMenu />
           </nav>
         </div>
       </header>
-      <main className={cn("mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6")}>{children}</main>
+      <main
+        className={cn(
+          "mx-auto w-full max-w-7xl flex-1 px-4 py-4 sm:px-6 sm:py-6",
+          isResidentRoute && "pb-20 md:pb-6",
+        )}
+      >
+        {children}
+      </main>
     </div>
   );
 }

@@ -1,10 +1,16 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { OrgCard } from "@/components/marketplace/org-card";
 import { ExploreFilters } from "@/components/marketplace/explore-filters";
+import { ExploreMapSection } from "@/components/marketplace/explore-map-section";
 import { PageTransition } from "@/components/shared/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchMarketplaceOrgs } from "@/lib/api/marketplace-server";
 import type { OrganizationType } from "@/types/enums";
+
+export const metadata: Metadata = {
+  title: "Explore",
+};
 
 interface ExplorePageProps {
   searchParams: Promise<{ city?: string; type?: string; q?: string }>;
@@ -39,6 +45,10 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
             <ExploreFilters />
           </Suspense>
         </div>
+
+        <Suspense fallback={<Skeleton className="mt-8 h-[420px] w-full rounded-xl" />}>
+          <ExploreMapSection orgs={orgs} />
+        </Suspense>
 
         <div className="mt-8">
           {error ? (

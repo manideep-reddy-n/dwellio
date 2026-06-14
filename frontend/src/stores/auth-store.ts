@@ -22,19 +22,27 @@ export const useAuthStore = create<AuthState>()(
       expiresAt: null,
       sessionReady: false,
 
-      setSession: (user, accessToken, expiresInSeconds) =>
+      setSession: (user, accessToken, expiresInSeconds) => {
         set({
           user,
           accessToken,
           expiresAt: Date.now() + expiresInSeconds * 1000,
-        }),
+        });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("dwellio-auth-changed"));
+        }
+      },
 
       setUser: (user) => set({ user }),
 
       setSessionReady: (ready) => set({ sessionReady: ready }),
 
-      clearSession: () =>
-        set({ user: null, accessToken: null, expiresAt: null }),
+      clearSession: () => {
+        set({ user: null, accessToken: null, expiresAt: null });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("dwellio-auth-changed"));
+        }
+      },
 
       isAuthenticated: () => {
         const { accessToken, expiresAt } = get();

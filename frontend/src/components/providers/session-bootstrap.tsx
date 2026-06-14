@@ -1,38 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  refreshAccessToken,
+  ensureMiddlewareSessionCookie,
+  hasPersistedCredentials,
   restoreSession,
   scheduleAccessTokenRefresh,
 } from "@/lib/auth/restore-session";
+import { getRefreshToken } from "@/lib/auth/session";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function SessionBootstrap() {
-  const setSessionReady = useAuthStore((s) => s.setSessionReady);
-  const [hydrated, setHydrated] = useState(false);
+  const setSessionReady = useRef(false);
+  const setSessionReadyFn = useAuthStore((s) => s.setSessionReady);
+  const bootstrappedRef = useRef(false);
 
   useEffect(() => {
-    if (useAuthStore.persist.hasHydrated()) {
-      setHydrated(true);
-      return;
-    }
-    return useAuthStore.persist.onFinishHydration(() => setHydrated(true));
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
+    if (bootstrappedRef.current) return;
+    bootstrappedRef.current = true;
 
     let cancelRefreshSchedule: (() => void) | undefined;
 
     async function bootstrap() {
-      setSessionReady(false);
+      ensureMiddlewareSessionCookie();
+      setSessionReadyFn(false);
       const ok = await restoreSession();
       if (ok) {
         cancelRefreshSchedule = scheduleAccessTokenRefresh();
       }
-      setSessionReady(true);
+      setSessionReadyFn(true);
     }
 
     void bootstrap();
@@ -40,7 +37,7 @@ export function SessionBootstrap() {
     return () => {
       cancelRefreshSchedule?.();
     };
-  }, [hydrated, setSessionReady]);
+  }, [setSessionReadyFn]);
 
   return null;
 }
@@ -50,10 +47,14 @@ export function useAuthHydrated() {
 
   useEffect(() => {
     if (useAuthStore.persist.hasHydrated()) {
+      ensureMiddlewareSessionCookie();
       setHydrated(true);
       return;
     }
-    return useAuthStore.persist.onFinishHydration(() => setHydrated(true));
+    return useAuthStore.persist.onFinishHydration(() => {
+      ensureMiddlewareSessionCookie();
+      setHydrated(true);
+    });
   }, []);
 
   return hydrated;
@@ -61,7 +62,6 @@ export function useAuthHydrated() {
 
 /** Redirect authenticated users away from login/register. */
 export function AuthRedirect({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const hydrated = useAuthHydrated();
   const sessionReady = useAuthStore((s) => s.sessionReady);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -72,9 +72,11 @@ export function AuthRedirect({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated || !sessionReady) return;
     if (authed) {
-      router.replace("/app");
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("next") ?? "/app";
+      window.location.assign(next);
     }
-  }, [hydrated, sessionReady, authed, router]);
+  }, [hydrated, sessionReady, authed]);
 
   if (!hydrated || !sessionReady) {
     return (
@@ -83,8 +85,18 @@ export function AuthRedirect({ children }: { children: React.ReactNode }) {
   }
 
   if (authed) {
-    return null;
+    return (
+      <div className="text-center text-sm text-muted-foreground">Redirecting…</div>
+    );
   }
 
   return <>{children}</>;
+}
+
+export function useHasAuthSession(): boolean {
+  const sessionReady = useAuthStore((s) => s.sessionReady);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const expiresAt = useAuthStore((s) => s.expiresAt);
+  const authed = Boolean(accessToken && expiresAt && expiresAt > Date.now());
+  return sessionReady ? authed || hasPersistedCredentials() : hasPersistedCredentials();
 }

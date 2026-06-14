@@ -2,6 +2,7 @@ package com.dwellio.domain.entity;
 
 import com.dwellio.common.entity.SoftDeletableEntity;
 import com.dwellio.domain.enums.AccommodationMode;
+import com.dwellio.domain.enums.HostelAudience;
 import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
 import jakarta.persistence.Column;
@@ -43,12 +44,16 @@ public class Organization extends SoftDeletableEntity {
     private OrganizationType type;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "hostel_audience", length = 20)
+    private HostelAudience hostelAudience;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "accommodation_mode", nullable = false, length = 20)
     private AccommodationMode accommodationMode;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private OrganizationStatus status = OrganizationStatus.PENDING;
+    private OrganizationStatus status = OrganizationStatus.DRAFT;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "plan_id", nullable = false)
@@ -77,6 +82,12 @@ public class Organization extends SoftDeletableEntity {
 
     @Column(precision = 11, scale = 8)
     private BigDecimal longitude;
+
+    @Column(name = "default_monthly_rent", precision = 12, scale = 2)
+    private BigDecimal defaultMonthlyRent;
+
+    @Column(name = "logo_url", length = 500)
+    private String logoUrl;
 
     @Column(name = "contact_phone", length = 50)
     private String contactPhone;

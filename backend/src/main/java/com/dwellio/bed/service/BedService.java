@@ -16,6 +16,7 @@ import com.dwellio.domain.entity.Organization;
 import com.dwellio.domain.entity.Space;
 import com.dwellio.domain.enums.BedStatus;
 import com.dwellio.occupancy.repository.OccupancyRepository;
+import com.dwellio.occupancy.service.OccupancyStructureReleaseService;
 import com.dwellio.space.service.SpaceService;
 import java.time.Clock;
 import java.time.Instant;
@@ -34,6 +35,7 @@ public class BedService {
     private final AccommodationGuard accommodationGuard;
     private final SpaceStatusProjectionService statusProjectionService;
     private final OccupancyRepository occupancyRepository;
+    private final OccupancyStructureReleaseService occupancyStructureReleaseService;
     private final AccommodationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -111,9 +113,7 @@ public class BedService {
         Bed bed = getActiveBed(organizationId, bedId);
         accommodationGuard.requireBedParentRoom(bed);
 
-        if (occupancyRepository.existsCurrentByBedId(bedId)) {
-            throw new BadRequestException("Cannot delete a bed with a current occupancy");
-        }
+        occupancyStructureReleaseService.releaseCurrentForBed(organizationId, bedId);
 
         UUID spaceId = bed.getSpace().getId();
         bed.setDeletedAt(Instant.now(clock));

@@ -31,4 +31,16 @@ public class Building extends SoftDeletableEntity {
 
     @Column(length = 50)
     private String code;
+
+    @Column(name = "layout_x")
+    private Double layoutX;
+
+    @Column(name = "layout_y")
+    private Double layoutY;
+
+    @Column(name = "layout_width")
+    private Double layoutWidth;
+
+    @Column(name = "layout_height")
+    private Double layoutHeight;
 }

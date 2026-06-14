@@ -21,6 +21,7 @@ import com.dwellio.joinrequest.repository.ResidentProfileRepository;
 import com.dwellio.membership.repository.MembershipRepository;
 import com.dwellio.common.event.AfterCommitEventPublisher;
 import com.dwellio.joinrequest.event.JoinRequestRejectedEvent;
+import com.dwellio.joinrequest.event.JoinRequestSubmittedEvent;
 import com.dwellio.metrics.event.MembershipActivatedEvent;
 import com.dwellio.organization.service.OrganizationService;
 import com.dwellio.role.service.RoleService;
@@ -64,6 +65,15 @@ public class JoinRequestService {
         joinRequest.setStatus(JoinRequestStatus.PENDING);
         joinRequest.setMessage(request.message());
         joinRequestRepository.save(joinRequest);
+
+        afterCommitEventPublisher.publish(new JoinRequestSubmittedEvent(
+                organizationId,
+                joinRequest.getId(),
+                user.getId(),
+                user.getFullName(),
+                organization.getName(),
+                organization.getSlug()
+        ));
 
         return toResponse(joinRequest);
     }
@@ -140,6 +150,7 @@ public class JoinRequestService {
                 joinRequest.getId(),
                 joinRequest.getUser().getId(),
                 joinRequest.getOrganization().getName(),
+                joinRequest.getOrganization().getSlug(),
                 request.rejectionReason()
         ));
 

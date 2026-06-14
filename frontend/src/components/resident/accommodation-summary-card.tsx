@@ -75,10 +75,10 @@ export function AccommodationSummaryCard() {
         </p>
         {orgSlug && (
           <Link
-            href={`/app/${orgSlug}/resident`}
+            href={`/app/${orgSlug}/resident/accommodation`}
             className="text-xs text-primary hover:underline"
           >
-            View resident home
+            View building layout
           </Link>
         )}
       </CardContent>

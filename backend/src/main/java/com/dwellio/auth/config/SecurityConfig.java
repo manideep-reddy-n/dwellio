@@ -4,6 +4,7 @@ import com.dwellio.auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -21,8 +22,36 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    /** Public API — no JWT required (marketplace, auth, health, websocket). */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    SecurityFilterChain publicSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher(
+                        "/health",
+                        "/health/**",
+                        "/marketplace/**",
+                        "/ws/**",
+                        "/auth/register",
+                        "/auth/login",
+                        "/auth/admin/login",
+                        "/auth/refresh",
+                        "/auth/forgot-password",
+                        "/auth/reset-password",
+                        "/public/invoices/**"
+                )
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> {})
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+
+        return http.build();
+    }
+
+    /** Protected org-scoped and user APIs — JWT required. */
+    @Bean
+    @Order(2)
+    SecurityFilterChain protectedSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> {})
@@ -30,11 +59,7 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/health").permitAll()
-                        .requestMatchers("/marketplace/**").permitAll()
-                        .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login", "/auth/refresh",
-                                "/auth/forgot-password", "/auth/reset-password").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

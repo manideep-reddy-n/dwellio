@@ -1,6 +1,7 @@
 package com.dwellio.building.service;
 
 import com.dwellio.accommodation.event.AccommodationEventPublisher;
+import com.dwellio.occupancy.service.OccupancyStructureReleaseService;
 import com.dwellio.building.dto.BuildingResponse;
 import com.dwellio.building.dto.CreateBuildingRequest;
 import com.dwellio.building.dto.UpdateBuildingRequest;
@@ -24,6 +25,7 @@ public class BuildingService {
     private final BuildingRepository buildingRepository;
     private final AccommodationGuard accommodationGuard;
     private final AccommodationEventPublisher eventPublisher;
+    private final OccupancyStructureReleaseService occupancyStructureReleaseService;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -70,6 +72,7 @@ public class BuildingService {
     @Transactional
     public void delete(UUID organizationId, UUID buildingId) {
         Building building = getActiveBuilding(organizationId, buildingId);
+        occupancyStructureReleaseService.releaseCurrentForBuilding(organizationId, buildingId);
         building.setDeletedAt(Instant.now(clock));
         buildingRepository.save(building);
         eventPublisher.publishStructureChanged(organizationId);

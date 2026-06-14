@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
 import {
   connectStomp,
   disconnectStomp,
@@ -10,6 +11,7 @@ import {
   unsubscribeOrgAnnouncements,
 } from "@/lib/websocket/stomp-client";
 import { invalidateFromNotification } from "@/lib/websocket/invalidation-router";
+import { getNotificationHrefFromPayload } from "@/lib/notifications/routes";
 import { useAuthStore } from "@/stores/auth-store";
 import { useOrgStore } from "@/stores/org-store";
 import { useWebSocketStore } from "@/stores/websocket-store";
@@ -28,6 +30,9 @@ interface NotificationPayload {
 
 export function StompProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith("/admin");
   const accessToken = useAuthStore((s) => s.accessToken);
   const sessionReady = useAuthStore((s) => s.sessionReady);
   const activeOrgId = useOrgStore((s) => s.activeOrg?.id ?? null);
@@ -36,7 +41,7 @@ export function StompProvider({ children }: { children: React.ReactNode }) {
   const incrementUnread = useNotificationStore((s) => s.incrementUnread);
 
   useEffect(() => {
-    if (!accessToken || !sessionReady) {
+    if (isAdminRoute || !accessToken || !sessionReady) {
       disconnectStomp();
       setStatus("idle");
       return;
@@ -58,7 +63,16 @@ export function StompProvider({ children }: { children: React.ReactNode }) {
               payload.type,
               payload.organizationId,
             );
-            toast(payload.title, { description: payload.body });
+            const href = getNotificationHrefFromPayload(payload.type, payload.payloadJson);
+            toast(payload.title, {
+              description: payload.body,
+              action: href
+                ? {
+                    label: "View",
+                    onClick: () => router.push(href),
+                  }
+                : undefined,
+            });
           } catch (error) {
             console.error("Failed to handle notification", error);
           }
@@ -77,7 +91,14 @@ export function StompProvider({ children }: { children: React.ReactNode }) {
                 "ANNOUNCEMENT_PUBLISHED",
                 payload.organizationId,
               );
-              toast("New announcement", { description: payload.title });
+              const orgSlug = useOrgStore.getState().activeOrg?.slug;
+              const href = orgSlug
+                ? `/app/${orgSlug}/resident/announcements`
+                : "/app/notifications";
+              toast("New announcement", {
+                description: payload.title,
+                action: { label: "View", onClick: () => router.push(href) },
+              });
             } catch (error) {
               console.error("Failed to handle announcement", error);
             }
@@ -96,7 +117,7 @@ export function StompProvider({ children }: { children: React.ReactNode }) {
       setStatus("idle");
       setSubscribedOrgId(null);
     };
-  }, [accessToken, sessionReady, activeOrgId, queryClient, incrementUnread, setStatus, setSubscribedOrgId]);
+  }, [isAdminRoute, accessToken, sessionReady, activeOrgId, queryClient, incrementUnread, setStatus, setSubscribedOrgId, router]);
 
   return <>{children}</>;
 }

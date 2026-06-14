@@ -7,6 +7,7 @@ public record JoinRequestRejectedEvent(
         UUID joinRequestId,
         UUID userId,
         String organizationName,
+        String organizationSlug,
         String rejectionReason
 ) {
 }

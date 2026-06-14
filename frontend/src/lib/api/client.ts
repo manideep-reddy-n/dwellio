@@ -16,11 +16,11 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
 }
 
 type TokenGetter = () => string | null;
-type RefreshHandler = () => Promise<string | null>;
+type RefreshHandler = () => Promise<{ token: string | null; authFailure: boolean }>;
 type AuthFailureHandler = () => void;
 
 let getAccessToken: TokenGetter = () => null;
-let refreshAccessToken: RefreshHandler = async () => null;
+let refreshAccessToken: RefreshHandler = async () => ({ token: null, authFailure: false });
 let onAuthFailure: AuthFailureHandler = () => {};
 
 export function configureApiAuth(
@@ -59,11 +59,13 @@ export async function apiRequest<T>(
   });
 
   if (response.status === 401 && !skipAuth && !token) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      return apiRequest<T>(baseUrl, path, { ...options, token: refreshed });
+    const { token: refreshedToken, authFailure } = await refreshAccessToken();
+    if (refreshedToken) {
+      return apiRequest<T>(baseUrl, path, { ...options, token: refreshedToken });
     }
-    onAuthFailure();
+    if (authFailure) {
+      onAuthFailure();
+    }
   }
 
   if (response.status === 204) {
@@ -87,4 +89,48 @@ export async function apiRequest<T>(
   }
 
   return payload as T;
+}
+
+export async function apiDownloadBlob(
+  baseUrl: string,
+  path: string,
+  filename: string,
+  options: Omit<ApiRequestOptions, "body"> = {},
+): Promise<void> {
+  const { token, skipAuth, headers, ...rest } = options;
+  const requestHeaders = new Headers(headers);
+  const accessToken = token ?? (skipAuth ? null : getAccessToken());
+  if (accessToken) {
+    requestHeaders.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  let response = await fetch(`${baseUrl}${path}`, {
+    ...rest,
+    headers: requestHeaders,
+  });
+
+  if (response.status === 401 && !skipAuth && !token) {
+    const { token: refreshedToken, authFailure } = await refreshAccessToken();
+    if (refreshedToken) {
+      requestHeaders.set("Authorization", `Bearer ${refreshedToken}`);
+      response = await fetch(`${baseUrl}${path}`, {
+        ...rest,
+        headers: requestHeaders,
+      });
+    } else if (authFailure) {
+      onAuthFailure();
+    }
+  }
+
+  if (!response.ok) {
+    throw new ApiError("Download failed", response.status);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

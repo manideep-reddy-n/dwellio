@@ -13,6 +13,8 @@ export const PERMISSIONS = {
   STAFF_MANAGE: "staff:manage",
   ROLE_MANAGE: "role:manage",
   ORGANIZATION_UPDATE: "organization:update",
+  PAYMENT_MANAGE: "payment:manage",
+  PAYMENT_READ_OWN: "payment:read_own",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

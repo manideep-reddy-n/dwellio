@@ -42,6 +42,13 @@ export interface OccupantSummary {
   moveInDate: string;
 }
 
+export interface VizLayout {
+  x: number | null;
+  y: number | null;
+  width: number | null;
+  height: number | null;
+}
+
 export interface VizBedNode {
   id: string;
   bedLabel: string;
@@ -60,6 +67,7 @@ export interface VizSpaceNode {
   blocked: boolean;
   beds: VizBedNode[];
   currentOccupant: OccupantSummary | null;
+  layout: VizLayout | null;
 }
 
 export interface VizFloorNode {
@@ -67,6 +75,7 @@ export interface VizFloorNode {
   floorNumber: number;
   name: string | null;
   spaces: VizSpaceNode[];
+  layout: VizLayout | null;
 }
 
 export interface VizBuildingNode {
@@ -74,6 +83,7 @@ export interface VizBuildingNode {
   name: string;
   code: string | null;
   floors: VizFloorNode[];
+  layout: VizLayout | null;
 }
 
 export interface AccommodationVisualization {

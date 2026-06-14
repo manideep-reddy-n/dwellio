@@ -21,15 +21,24 @@ export function getInvalidationsForNotification(
   switch (type) {
     case "JOIN_REQUEST_APPROVED":
     case "JOIN_REQUEST_REJECTED":
+    case "JOIN_REQUEST_SUBMITTED":
       return {
         queryKeys: org
           ? [
               queryKeys.joinRequests(org),
-              queryKeys.memberships(org),
+              queryKeys.me.memberships(),
               queryKeys.dashboard(org),
               queryKeys.liveOps(org),
             ]
-          : [],
+          : [queryKeys.me.memberships()],
+      };
+
+    case "AVAILABILITY_OPEN":
+      return {
+        queryKeys: [
+          queryKeys.notifications.inbox(),
+          queryKeys.notifications.unreadCount(),
+        ],
       };
 
     case "COMPLAINT_CREATED":
@@ -83,6 +92,54 @@ export function getInvalidationsForNotification(
           : [],
       };
 
+    case "PAYMENT_DUE":
+      return {
+        queryKeys: org
+          ? [
+              queryKeys.payments(org),
+              queryKeys.resident.home(org),
+              queryKeys.dashboard(org),
+            ]
+          : [],
+      };
+
+    case "INVOICE_SHARED":
+      return {
+        queryKeys: org
+          ? [queryKeys.payments(org), queryKeys.resident.home(org)]
+          : [],
+      };
+
+    case "LEAVE_REQUEST_SUBMITTED":
+      return {
+        queryKeys: org
+          ? [queryKeys.memberships(org), queryKeys.dashboard(org), queryKeys.liveOps(org)]
+          : [],
+      };
+
+    case "LEAVE_REQUEST_APPROVED":
+    case "LEAVE_REQUEST_REJECTED":
+      return { queryKeys: [queryKeys.me.memberships()] };
+
+    case "FOOD_MENU_UPDATED":
+      return {
+        queryKeys: org ? [queryKeys.foodMenu(org), queryKeys.resident.home(org), queryKeys.dashboard(org)] : [],
+      };
+
+    case "ORGANIZATION_VERIFIED":
+    case "ORGANIZATION_VERIFICATION_SUBMITTED":
+    case "ORGANIZATION_VERIFICATION_REJECTED":
+    case "ORGANIZATION_VERIFICATION_MORE_INFO":
+      return {
+        queryKeys: org
+          ? [
+              queryKeys.organizations.detail(org),
+              queryKeys.verification(org),
+              [...queryKeys.all, "marketplace"] as const,
+            ]
+          : [[...queryKeys.all, "marketplace"] as const],
+      };
+
     case "SYSTEM":
     default:
       return { queryKeys: [queryKeys.notifications.inbox(), queryKeys.notifications.unreadCount()] };
@@ -102,6 +159,7 @@ export function invalidateFromNotification(
 
   void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
   void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.inbox() });
+  void queryClient.invalidateQueries({ queryKey: [...queryKeys.notifications.inbox(), "preview"] });
 }
 
 /** Live Operations Center aggregate invalidation — refresh all live panels. */

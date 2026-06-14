@@ -44,6 +44,8 @@ public class TestRbacDataSeeder {
             seedPermission("role:manage", "role", "Manage roles and permissions");
             seedPermission("contact:manage", "contact", "Manage organization contacts");
             seedPermission("dashboard:view", "dashboard", "View organization dashboard");
+            seedPermission("verification:manage", "verification", "Submit and manage organization verification");
+            seedPermission("verification:review", "verification", "Review organization verification requests");
             for (String code : PermissionConstants.RESIDENT_PERMISSIONS) {
                 if (permissionRepository.findByCode(code).isEmpty()) {
                     seedPermission(code, code.split(":")[0], code);

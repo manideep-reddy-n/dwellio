@@ -1,5 +1,6 @@
 package com.dwellio.auth.controller;
 
+import com.dwellio.auth.dto.AdminLoginRequest;
 import com.dwellio.auth.dto.AuthResponse;
 import com.dwellio.auth.dto.ForgotPasswordRequest;
 import com.dwellio.auth.dto.LoginRequest;
@@ -39,6 +40,11 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/admin/login")
+    public AuthResponse adminLogin(@Valid @RequestBody AdminLoginRequest request) {
+        return authService.adminLogin(request);
     }
 
     @PostMapping("/refresh")

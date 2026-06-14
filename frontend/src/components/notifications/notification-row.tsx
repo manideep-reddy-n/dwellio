@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import { Bell, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format/datetime";
+import { getNotificationHref } from "@/lib/notifications/routes";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types/api/notification";
 import { useUiStore } from "@/stores/ui-store";
@@ -15,33 +16,11 @@ interface NotificationRowProps {
   isMarking?: boolean;
 }
 
-function notificationHref(notification: Notification): string | null {
-  const orgId = notification.organizationId;
-  if (!orgId || !notification.payloadJson) return null;
-
-  const slug = notification.payloadJson.organizationSlug;
-  const orgSlug = typeof slug === "string" ? slug : null;
-
-  switch (notification.type) {
-    case "COMPLAINT_CREATED":
-    case "COMPLAINT_ASSIGNED":
-    case "COMPLAINT_RESOLVED":
-    case "COMPLAINT_REOPENED":
-      return orgSlug ? `/app/${orgSlug}/resident/complaints` : null;
-    case "ANNOUNCEMENT_PUBLISHED":
-      return orgSlug ? `/app/${orgSlug}/resident/announcements` : null;
-    case "JOIN_REQUEST_APPROVED":
-    case "JOIN_REQUEST_REJECTED":
-      return "/app/organizations";
-    default:
-      return null;
-  }
-}
-
 export function NotificationRow({ notification, onMarkRead, isMarking }: NotificationRowProps) {
+  const router = useRouter();
   const reducedMotion = useUiStore((s) => s.reducedMotion);
   const isUnread = notification.status === "UNREAD";
-  const href = notificationHref(notification);
+  const href = getNotificationHref(notification);
 
   const inner = (
     <>
@@ -83,37 +62,21 @@ export function NotificationRow({ notification, onMarkRead, isMarking }: Notific
     </>
   );
 
-  if (href) {
-    return (
-      <motion.li
-        layout={!reducedMotion}
-        className={cn(
-          "transition-colors",
-          isUnread && "bg-primary/5",
-        )}
-      >
-        <Link
-          href={href}
-          className="flex items-start gap-3 px-4 py-3 hover:bg-muted/30"
-          onClick={() => {
-            if (isUnread) onMarkRead(notification.id);
-          }}
-        >
-          {inner}
-        </Link>
-      </motion.li>
-    );
+  function navigate() {
+    if (isUnread) onMarkRead(notification.id);
+    router.push(href ?? "/app/notifications");
   }
 
   return (
     <motion.li
       layout={!reducedMotion}
       className={cn(
-        "flex items-start gap-3 px-4 py-3 transition-colors",
+        "cursor-pointer transition-colors hover:bg-muted/30",
         isUnread && "bg-primary/5",
       )}
+      onClick={navigate}
     >
-      {inner}
+      <div className="flex items-start gap-3 px-4 py-3">{inner}</div>
     </motion.li>
   );
 }

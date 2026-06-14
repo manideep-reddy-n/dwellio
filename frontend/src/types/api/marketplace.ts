@@ -1,4 +1,4 @@
-import type { AccommodationMode, OrganizationType } from "@/types/enums";
+import type { AccommodationMode, HostelAudience, OrganizationType } from "@/types/enums";
 
 export interface PublicOrganizationMetrics {
   activeResidentCount: number;
@@ -22,12 +22,23 @@ export interface PublicOrganizationResponse {
   name: string;
   description: string | null;
   type: OrganizationType;
+  hostelAudience?: HostelAudience | null;
   accommodationMode: AccommodationMode;
   city: string;
   area: string | null;
+  latitude: number | null;
+  longitude: number | null;
   contactPhone: string | null;
   contactEmail: string | null;
   metrics: PublicOrganizationMetrics;
+  verified: boolean;
+  logoUrl: string | null;
+  amenities?: PublicAmenity[];
+}
+
+export interface PublicAmenity {
+  name: string;
+  icon: string | null;
 }
 
 export interface PublicOrganizationSummary {
@@ -36,10 +47,15 @@ export interface PublicOrganizationSummary {
   name: string;
   description: string | null;
   type: OrganizationType;
+  hostelAudience?: HostelAudience | null;
   accommodationMode: AccommodationMode;
   city: string;
   area: string | null;
+  latitude: number | null;
+  longitude: number | null;
   metrics: PublicOrganizationMetrics;
+  verified: boolean;
+  logoUrl: string | null;
 }
 
 export interface PublicReview {

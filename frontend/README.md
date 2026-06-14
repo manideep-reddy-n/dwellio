@@ -41,6 +41,10 @@ Demo users (password `Password123!`): `platform-admin@dwellio.dev`, `owner@dwell
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8081/api/v1` |
 | `NEXT_PUBLIC_WS_URL` | `ws://localhost:8081/api/v1/ws` |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | — (required for maps) |
+| `NEXT_PUBLIC_GOOGLE_MAP_ID` | `DEMO_MAP_ID` (optional; use your own Map ID in production) |
+
+Maps use the **Google Maps JavaScript API** and **Places API**. In [Google Cloud Console](https://console.cloud.google.com/), enable both APIs and restrict the key to your site origin (e.g. `http://localhost:3000/*`).
 
 ## Routes
 

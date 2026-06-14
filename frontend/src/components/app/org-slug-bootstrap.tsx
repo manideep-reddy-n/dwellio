@@ -1,17 +1,16 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMyMembershipBySlug } from "@/hooks/use-memberships";
 import { membershipToOrgContext } from "@/lib/org/context";
 import { useOrgStore } from "@/stores/org-store";
 
 interface OrgSlugBootstrapProps {
-  params: Promise<{ orgSlug: string }>;
+  orgSlug: string;
 }
 
-export function OrgSlugBootstrap({ params }: OrgSlugBootstrapProps) {
-  const { orgSlug } = use(params);
+export function OrgSlugBootstrap({ orgSlug }: OrgSlugBootstrapProps) {
   const router = useRouter();
   const rememberOrg = useOrgStore((s) => s.rememberOrg);
   const setActiveOrg = useOrgStore((s) => s.setActiveOrg);

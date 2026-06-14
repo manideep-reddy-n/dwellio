@@ -37,6 +37,9 @@ export function OrgContextBootstrap() {
       activeOrg &&
       activeOrg.id === next.id &&
       activeOrg.slug === next.slug &&
+      activeOrg.name === next.name &&
+      activeOrg.organizationType === next.organizationType &&
+      activeOrg.logoUrl === next.logoUrl &&
       activeOrg.isOwner === next.isOwner &&
       samePermissions(activeOrg.permissions, next.permissions)
     ) {

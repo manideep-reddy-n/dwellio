@@ -1,7 +1,10 @@
 package com.dwellio.membership.service;
 
 import com.dwellio.auth.security.UserPrincipal;
+import com.dwellio.common.exception.BadRequestException;
+import com.dwellio.common.exception.NotFoundException;
 import com.dwellio.domain.entity.Membership;
+import com.dwellio.domain.enums.MembershipStatus;
 import com.dwellio.membership.dto.UserMembershipResponse;
 import com.dwellio.membership.repository.MembershipRepository;
 import com.dwellio.role.repository.PermissionRepository;
@@ -9,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.time.Clock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +23,7 @@ public class MeMembershipService {
 
     private final MembershipRepository membershipRepository;
     private final PermissionRepository permissionRepository;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public List<UserMembershipResponse> listMyMemberships(UUID userId) {
@@ -35,6 +40,13 @@ public class MeMembershipService {
                 .orElseThrow(() -> new com.dwellio.common.exception.ForbiddenException("Active membership required"));
     }
 
+    @Transactional
+    public void leaveOrganization(UUID userId, UUID organizationId) {
+        throw new BadRequestException(
+                "Direct leave is disabled. Submit a leave request for owner approval."
+        );
+    }
+
     private UserMembershipResponse toResponse(Membership membership) {
         boolean owner = membership.getRole().isOwnerRole();
         Set<String> permissions = owner
@@ -46,6 +58,8 @@ public class MeMembershipService {
                 membership.getOrganization().getId(),
                 membership.getOrganization().getSlug(),
                 membership.getOrganization().getName(),
+                membership.getOrganization().getType(),
+                membership.getOrganization().getLogoUrl(),
                 membership.getOrganization().getAccommodationMode(),
                 membership.getRole().getName(),
                 owner,

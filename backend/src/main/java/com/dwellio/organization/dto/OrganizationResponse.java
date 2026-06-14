@@ -1,8 +1,10 @@
 package com.dwellio.organization.dto;
 
 import com.dwellio.domain.enums.AccommodationMode;
+import com.dwellio.domain.enums.HostelAudience;
 import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public record OrganizationResponse(
@@ -11,6 +13,7 @@ public record OrganizationResponse(
         String name,
         String description,
         OrganizationType type,
+        HostelAudience hostelAudience,
         AccommodationMode accommodationMode,
         OrganizationStatus status,
         String city,
@@ -18,8 +21,12 @@ public record OrganizationResponse(
         String state,
         String postalCode,
         String addressLine,
+        BigDecimal latitude,
+        BigDecimal longitude,
         String contactPhone,
         String contactEmail,
-        String planCode
+        String planCode,
+        BigDecimal defaultMonthlyRent,
+        String logoUrl
 ) {
 }

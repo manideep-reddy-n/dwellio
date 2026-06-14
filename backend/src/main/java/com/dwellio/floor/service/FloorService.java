@@ -12,6 +12,7 @@ import com.dwellio.floor.dto.CreateFloorRequest;
 import com.dwellio.floor.dto.FloorResponse;
 import com.dwellio.floor.dto.UpdateFloorRequest;
 import com.dwellio.floor.repository.FloorRepository;
+import com.dwellio.occupancy.service.OccupancyStructureReleaseService;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -28,6 +29,7 @@ public class FloorService {
     private final BuildingService buildingService;
     private final AccommodationGuard accommodationGuard;
     private final AccommodationEventPublisher eventPublisher;
+    private final OccupancyStructureReleaseService occupancyStructureReleaseService;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -84,6 +86,7 @@ public class FloorService {
     @Transactional
     public void delete(UUID organizationId, UUID floorId) {
         Floor floor = getActiveFloor(organizationId, floorId);
+        occupancyStructureReleaseService.releaseCurrentForFloor(organizationId, floorId);
         floor.setDeletedAt(Instant.now(clock));
         floorRepository.save(floor);
         eventPublisher.publishStructureChanged(organizationId);

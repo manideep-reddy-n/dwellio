@@ -1,6 +1,7 @@
 package com.dwellio.auth.service;
 
 import com.dwellio.auth.config.JwtProperties;
+import com.dwellio.auth.dto.AdminLoginRequest;
 import com.dwellio.auth.dto.AuthResponse;
 import com.dwellio.auth.dto.LoginRequest;
 import com.dwellio.auth.dto.RegisterRequest;
@@ -54,15 +55,40 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findActiveByEmail(request.email().trim().toLowerCase())
-                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+        return authenticate(request.email().trim().toLowerCase(), request.password());
+    }
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new UnauthorizedException("Invalid email or password");
+    @Transactional
+    public AuthResponse adminLogin(AdminLoginRequest request) {
+        String username = request.username().trim().toLowerCase();
+        String email = resolveAdminEmail(username);
+        AuthResponse response = authenticate(email, request.password());
+        if (!response.user().platformAdmin()) {
+            throw new UnauthorizedException("Not a platform administrator");
+        }
+        return response;
+    }
+
+    private AuthResponse authenticate(String email, String password) {
+        User user = userRepository.findActiveByEmail(email)
+                .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new UnauthorizedException("Invalid credentials");
         }
 
         refreshTokenRepository.revokeAllForUser(user.getId(), clock.instant());
         return issueTokens(user);
+    }
+
+    private static String resolveAdminEmail(String username) {
+        if ("admin".equals(username)) {
+            return "admin@dwellio.local";
+        }
+        if (username.contains("@")) {
+            return username;
+        }
+        return username + "@dwellio.local";
     }
 
     @Transactional

@@ -4,10 +4,12 @@ import com.dwellio.common.exception.NotFoundException;
 import com.dwellio.domain.entity.Organization;
 import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
+import com.dwellio.marketplace.dto.PublicAmenityResponse;
 import com.dwellio.marketplace.dto.PublicOrganizationResponse;
 import com.dwellio.marketplace.dto.PublicOrganizationSummaryResponse;
 import com.dwellio.marketplace.dto.PublicReviewResponse;
 import com.dwellio.metrics.service.MetricsProjectionService;
+import com.dwellio.organization.repository.OrganizationAmenityRepository;
 import com.dwellio.organization.repository.OrganizationMetricsCacheRepository;
 import com.dwellio.organization.repository.OrganizationRepository;
 import com.dwellio.organization.service.OrganizationService;
@@ -28,6 +30,7 @@ public class MarketplaceService {
     private final OrganizationService organizationService;
     private final OrganizationRepository organizationRepository;
     private final OrganizationMetricsCacheRepository metricsCacheRepository;
+    private final OrganizationAmenityRepository organizationAmenityRepository;
     private final MetricsProjectionService metricsProjectionService;
     private final ReviewRepository reviewRepository;
 
@@ -37,8 +40,8 @@ public class MarketplaceService {
             OrganizationType type,
             String query
     ) {
-        String normalizedCity = blankToNull(city);
-        String normalizedQuery = blankToNull(query);
+        String normalizedCity = emptyIfBlank(city);
+        String normalizedQuery = emptyIfBlank(query);
 
         return organizationRepository.searchMarketplace(
                         OrganizationStatus.VERIFIED,
@@ -61,7 +64,17 @@ public class MarketplaceService {
         var cache = metricsCacheRepository.findById(organization.getId())
                 .orElseGet(() -> metricsProjectionService.rebuild(organization.getId()));
 
-        return PublicOrganizationResponse.from(organization, cache);
+        return PublicOrganizationResponse.from(
+                organization,
+                cache,
+                listAmenities(organization.getId())
+        );
+    }
+
+    private List<PublicAmenityResponse> listAmenities(UUID organizationId) {
+        return organizationAmenityRepository.findAmenitiesByOrganizationId(organizationId).stream()
+                .map(amenity -> new PublicAmenityResponse(amenity.getName(), amenity.getIcon()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -81,6 +94,13 @@ public class MarketplaceService {
         return metricsCacheRepository.findById(organization.getId())
                 .map(cache -> PublicOrganizationSummaryResponse.from(organization, cache))
                 .orElseGet(() -> PublicOrganizationSummaryResponse.fromOrganization(organization));
+    }
+
+    private static String emptyIfBlank(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return value.trim();
     }
 
     private static String blankToNull(String value) {

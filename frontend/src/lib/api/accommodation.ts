@@ -15,6 +15,19 @@ export const accommodationApi = {
       apiConfig.baseUrl,
       `/organizations/${orgId}/accommodation/visualization`,
     ),
+
+  updateLayout: (
+    orgId: string,
+    body: {
+      buildings?: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+      floors?: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+      spaces?: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+    },
+  ) =>
+    apiRequest<void>(apiConfig.baseUrl, `/organizations/${orgId}/accommodation/layout`, {
+      method: "PATCH",
+      body,
+    }),
 };
 
 export const buildingsApi = {
@@ -136,6 +149,7 @@ export const occupanciesApi = {
       bedId?: string;
       unitSpaceId?: string;
       moveInDate: string;
+      monthlyRent?: number;
     },
   ) =>
     apiRequest<StaffOccupancy>(apiConfig.baseUrl, `/organizations/${orgId}/occupancies/allocate`, {

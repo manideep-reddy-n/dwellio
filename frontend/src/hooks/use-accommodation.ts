@@ -99,6 +99,7 @@ export function useAccommodationMutations(orgId: string | undefined) {
       bedId?: string;
       unitSpaceId?: string;
       moveInDate: string;
+      monthlyRent?: number;
     }) => occupanciesApi.allocate(orgId!, body),
     onSettled: invalidateViz,
   });
@@ -119,14 +120,96 @@ export function useAccommodationMutations(orgId: string | undefined) {
     onSettled: invalidateViz,
   });
 
+  const updateLayout = useMutation({
+    mutationFn: (body: {
+      buildings?: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+      floors?: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+      spaces?: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+    }) => accommodationApi.updateLayout(orgId!, body),
+    onSettled: invalidateViz,
+  });
+
+  const updateBuilding = useMutation({
+    mutationFn: ({
+      buildingId,
+      body,
+    }: {
+      buildingId: string;
+      body: { name?: string; code?: string };
+    }) => buildingsApi.update(orgId!, buildingId, body),
+    onSettled: invalidateViz,
+  });
+
+  const deleteBuilding = useMutation({
+    mutationFn: (buildingId: string) => buildingsApi.delete(orgId!, buildingId),
+    onSettled: invalidateViz,
+  });
+
+  const updateFloor = useMutation({
+    mutationFn: ({
+      floorId,
+      body,
+    }: {
+      floorId: string;
+      body: { floorNumber?: number; name?: string };
+    }) => floorsApi.update(orgId!, floorId, body),
+    onSettled: invalidateViz,
+  });
+
+  const deleteFloor = useMutation({
+    mutationFn: (floorId: string) => floorsApi.delete(orgId!, floorId),
+    onSettled: invalidateViz,
+  });
+
+  const updateSpace = useMutation({
+    mutationFn: ({
+      spaceId,
+      body,
+    }: {
+      spaceId: string;
+      body: { identifier?: string; displayName?: string };
+    }) => spacesApi.update(orgId!, spaceId, body),
+    onSettled: invalidateViz,
+  });
+
+  const deleteSpace = useMutation({
+    mutationFn: (spaceId: string) => spacesApi.delete(orgId!, spaceId),
+    onSettled: invalidateViz,
+  });
+
+  const updateBed = useMutation({
+    mutationFn: ({
+      bedId,
+      body,
+    }: {
+      bedId: string;
+      body: { bedLabel?: string };
+    }) => bedsApi.update(orgId!, bedId, body),
+    onSettled: invalidateViz,
+  });
+
+  const deleteBed = useMutation({
+    mutationFn: (bedId: string) => bedsApi.delete(orgId!, bedId),
+    onSettled: invalidateViz,
+  });
+
   return {
     createBuilding,
     createFloor,
     createSpace,
     createBed,
+    updateBuilding,
+    deleteBuilding,
+    updateFloor,
+    deleteFloor,
+    updateSpace,
+    deleteSpace,
+    updateBed,
+    deleteBed,
     allocate,
     transfer,
     release,
+    updateLayout,
     invalidateViz,
   };
 }

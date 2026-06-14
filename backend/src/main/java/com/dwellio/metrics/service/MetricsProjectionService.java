@@ -1,10 +1,12 @@
 package com.dwellio.metrics.service;
 
 import com.dwellio.common.exception.NotFoundException;
+import com.dwellio.common.event.AfterCommitEventPublisher;
 import com.dwellio.domain.entity.Organization;
 import com.dwellio.domain.entity.OrganizationMetricsCache;
 import com.dwellio.domain.enums.AccommodationMode;
 import com.dwellio.metrics.projection.MetricsAggregateRepository;
+import com.dwellio.metrics.event.AvailabilityMetricsUpdatedEvent;
 import com.dwellio.metrics.projection.snapshot.BedAvailabilitySnapshot;
 import com.dwellio.metrics.projection.snapshot.ComplaintMetricsSnapshot;
 import com.dwellio.metrics.projection.snapshot.ReviewMetricsSnapshot;
@@ -29,6 +31,7 @@ public class MetricsProjectionService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationMetricsCacheRepository metricsCacheRepository;
     private final MetricsAggregateRepository metricsAggregateRepository;
+    private final AfterCommitEventPublisher afterCommitEventPublisher;
     private final Clock clock;
 
     @Transactional
@@ -44,7 +47,9 @@ public class MetricsProjectionService {
         applyReviewProjection(cache, organization.getId());
         cache.setActiveResidentCount(metricsAggregateRepository.countActiveResidents(organizationId));
         cache.setRefreshedAt(Instant.now(clock));
-        return metricsCacheRepository.save(cache);
+        OrganizationMetricsCache saved = metricsCacheRepository.save(cache);
+        publishAvailabilityUpdated(saved);
+        return saved;
     }
 
     @Transactional
@@ -57,7 +62,8 @@ public class MetricsProjectionService {
 
         applyAvailabilityProjection(cache, organization);
         cache.setRefreshedAt(Instant.now(clock));
-        metricsCacheRepository.save(cache);
+        OrganizationMetricsCache saved = metricsCacheRepository.save(cache);
+        publishAvailabilityUpdated(saved);
     }
 
     @Transactional
@@ -172,5 +178,13 @@ public class MetricsProjectionService {
         cache.setComplaintCategoryCounts(new HashMap<>());
         cache.setRefreshedAt(Instant.now(clock));
         return cache;
+    }
+
+    private void publishAvailabilityUpdated(OrganizationMetricsCache cache) {
+        afterCommitEventPublisher.publish(new AvailabilityMetricsUpdatedEvent(
+                cache.getOrganizationId(),
+                cache.getAvailableBeds(),
+                cache.getAvailableUnits()
+        ));
     }
 }

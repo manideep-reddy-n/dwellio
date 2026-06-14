@@ -22,6 +22,8 @@ import { useMyMemberships } from "@/hooks/use-memberships";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useAuth } from "@/hooks/use-auth";
 import { buildCommandItems } from "@/lib/navigation/command-items";
+import { orgHomePath } from "@/lib/navigation/app-routing";
+import { canAccessOperations } from "@/lib/permissions/evaluate";
 import { useOrgStore } from "@/stores/org-store";
 import { useUiStore } from "@/stores/ui-store";
 
@@ -37,8 +39,8 @@ export function CommandPalette() {
   const { user } = useAuth();
 
   const navItems = useMemo(
-    () => buildCommandItems(activeOrg?.slug, permissions, isOwner, user?.platformAdmin),
-    [activeOrg?.slug, permissions, isOwner, user?.platformAdmin],
+    () => buildCommandItems(activeOrg?.slug, permissions, isOwner, user?.platformAdmin, memberships),
+    [activeOrg?.slug, permissions, isOwner, user?.platformAdmin, memberships],
   );
 
   useEffect(() => {
@@ -72,14 +74,12 @@ export function CommandPalette() {
         <CommandEmpty>No results found.</CommandEmpty>
 
         {memberships.length > 0 && (
-          <CommandGroup heading="Organizations">
+          <CommandGroup heading={memberships.every((m) => !canAccessOperations(m.permissions, m.ownerRole)) ? "My stays" : "Organizations"}>
             {memberships.map((membership, index) => (
               <CommandItem
                 key={membership.organizationId}
                 value={`${membership.organizationName} ${membership.organizationSlug} ${membership.roleName}`}
-                onSelect={() =>
-                  navigate(`/app/${membership.organizationSlug}/operations/live`)
-                }
+                onSelect={() => navigate(orgHomePath(membership))}
               >
                 {(() => {
                   const Icon = orgIcons[index % orgIcons.length];

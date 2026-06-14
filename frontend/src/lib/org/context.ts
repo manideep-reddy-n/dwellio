@@ -6,6 +6,8 @@ export function membershipToOrgContext(membership: UserMembership): OrgContext {
     id: membership.organizationId,
     slug: membership.organizationSlug,
     name: membership.organizationName,
+    organizationType: membership.organizationType,
+    logoUrl: membership.logoUrl,
     accommodationMode: membership.accommodationMode,
     permissions: membership.permissions,
     isOwner: membership.ownerRole,

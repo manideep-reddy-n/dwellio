@@ -6,6 +6,7 @@ import com.dwellio.accommodation.dto.AccommodationVisualizationResponse.Building
 import com.dwellio.accommodation.dto.AccommodationVisualizationResponse.FloorNode;
 import com.dwellio.accommodation.dto.AccommodationVisualizationResponse.OccupantSummary;
 import com.dwellio.accommodation.dto.AccommodationVisualizationResponse.SpaceNode;
+import com.dwellio.accommodation.dto.LayoutMapper;
 import com.dwellio.bed.repository.BedRepository;
 import com.dwellio.building.repository.BuildingRepository;
 import com.dwellio.domain.entity.Bed;
@@ -18,6 +19,8 @@ import com.dwellio.domain.enums.AccommodationMode;
 import com.dwellio.floor.repository.FloorRepository;
 import com.dwellio.occupancy.repository.OccupancyRepository;
 import com.dwellio.space.repository.SpaceRepository;
+import com.dwellio.common.security.AuthorizationService;
+import com.dwellio.common.security.MembershipContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccommodationVisualizationService {
 
     private final AccommodationGuard accommodationGuard;
+    private final AuthorizationService authorizationService;
     private final BuildingRepository buildingRepository;
     private final FloorRepository floorRepository;
     private final SpaceRepository spaceRepository;
@@ -41,6 +45,24 @@ public class AccommodationVisualizationService {
 
     @Transactional(readOnly = true)
     public AccommodationVisualizationResponse getVisualization(UUID organizationId) {
+        MembershipContext viewer = authorizationService.requireMembership(organizationId);
+        boolean staffView = viewer.isOwner() || viewer.hasPermission("building:manage");
+        return buildVisualization(organizationId, staffView, viewer.getMembershipId());
+    }
+
+    @Transactional(readOnly = true)
+    public AccommodationVisualizationResponse getVisualizationForAdmin(UUID organizationId) {
+        if (!authorizationService.isPlatformAdmin()) {
+            throw new com.dwellio.common.exception.ForbiddenException("Platform admin access required");
+        }
+        return buildVisualization(organizationId, true, null);
+    }
+
+    private AccommodationVisualizationResponse buildVisualization(
+            UUID organizationId,
+            boolean staffView,
+            UUID viewerMembershipId
+    ) {
         Organization organization = accommodationGuard.requireOrganization(organizationId);
         List<Building> buildings = buildingRepository.findAllActiveByOrganizationId(organizationId);
 
@@ -71,7 +93,7 @@ public class AccommodationVisualizationService {
                                     bed.getBedLabel(),
                                     bed.getStatus(),
                                     bed.isBlocked(),
-                                    toOccupantSummary(bedOccupancy)
+                                    toOccupantSummary(bedOccupancy, staffView, viewerMembershipId)
                             ));
                         }
                     }
@@ -87,22 +109,25 @@ public class AccommodationVisualizationService {
                             space.isBlocked(),
                             bedNodes,
                             organization.getAccommodationMode() == AccommodationMode.UNIT_BASED
-                                    ? toOccupantSummary(unitOccupancy)
-                                    : null
+                                    ? toOccupantSummary(unitOccupancy, staffView, viewerMembershipId)
+                                    : null,
+                            LayoutMapper.toDto(space)
                     ));
                 }
                 floorNodes.add(new FloorNode(
                         floor.getId(),
                         floor.getFloorNumber(),
                         floor.getName(),
-                        spaceNodes
+                        spaceNodes,
+                        LayoutMapper.toDto(floor)
                 ));
             }
             buildingNodes.add(new BuildingNode(
                     building.getId(),
                     building.getName(),
                     building.getCode(),
-                    floorNodes
+                    floorNodes,
+                    LayoutMapper.toDto(building)
             ));
         }
 
@@ -113,13 +138,25 @@ public class AccommodationVisualizationService {
         );
     }
 
-    private OccupantSummary toOccupantSummary(Occupancy occupancy) {
+    private OccupantSummary toOccupantSummary(
+            Occupancy occupancy,
+            boolean staffView,
+            UUID viewerMembershipId
+    ) {
         if (occupancy == null) {
             return null;
         }
+        String residentName;
+        if (staffView) {
+            residentName = occupancy.getMembership().getUser().getFullName();
+        } else if (occupancy.getMembership().getId().equals(viewerMembershipId)) {
+            residentName = "You";
+        } else {
+            residentName = "Occupied";
+        }
         return new OccupantSummary(
                 occupancy.getMembership().getId(),
-                occupancy.getMembership().getUser().getFullName(),
+                residentName,
                 occupancy.getMoveInDate()
         );
     }

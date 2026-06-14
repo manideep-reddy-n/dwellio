@@ -2,12 +2,11 @@
 
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { StompProvider } from "@/components/providers/stomp-provider";
 import { SessionBootstrap } from "@/components/providers/session-bootstrap";
 import { configureApiAuth, configureAuthFailure } from "@/lib/api/client";
-import { refreshAccessToken } from "@/lib/auth/restore-session";
+import { isRefreshInFlight, refreshAccessToken } from "@/lib/auth/restore-session";
 import { clearSession } from "@/lib/auth/session";
 import { queryDefaults } from "@/lib/query/defaults";
 import { useAuthStore } from "@/stores/auth-store";
@@ -46,12 +45,16 @@ function ApiAuthBootstrap() {
     configureApiAuth(
       () => useAuthStore.getState().accessToken,
       async () => {
-        const refreshed = await refreshAccessToken();
-        return refreshed ? useAuthStore.getState().accessToken : null;
+        const result = await refreshAccessToken();
+        if (result.ok) {
+          return { token: useAuthStore.getState().accessToken, authFailure: false };
+        }
+        return { token: null, authFailure: result.reason === "auth" };
       },
     );
 
     configureAuthFailure(() => {
+      if (isRefreshInFlight()) return;
       clearAuth();
       clearSession();
       setSessionReady(true);
@@ -82,14 +85,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-      <QueryClientProvider client={queryClient}>
-        <ApiAuthBootstrap />
-        <SessionBootstrap />
-        <ReducedMotionBootstrap />
-        <StompProvider>{children}</StompProvider>
-        <Toaster richColors closeButton position="top-right" />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ApiAuthBootstrap />
+      <SessionBootstrap />
+      <ReducedMotionBootstrap />
+      <StompProvider>{children}</StompProvider>
+      <Toaster richColors closeButton position="top-right" />
+    </QueryClientProvider>
   );
 }

@@ -2,6 +2,7 @@ package com.dwellio.notification.repository;
 
 import com.dwellio.domain.entity.Notification;
 import com.dwellio.domain.enums.NotificationStatus;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -51,7 +52,7 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
     long countByUserIdAndStatus(UUID userId, NotificationStatus status);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("""
             UPDATE Notification n
             SET n.status = 'READ', n.readAt = :readAt
@@ -59,4 +60,22 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
               AND n.status = 'UNREAD'
             """)
     int markAllRead(@Param("userId") UUID userId, @Param("readAt") java.time.Instant readAt);
+
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM notifications n
+                WHERE n.user_id = :userId
+                  AND n.organization_id = :organizationId
+                  AND n.type = CAST(:type AS VARCHAR)
+                  AND n.created_at >= :since
+                  AND n.payload_json::text LIKE CONCAT('%', :paymentId, '%')
+            )
+            """, nativeQuery = true)
+    boolean existsRecentForPayment(
+            @Param("userId") UUID userId,
+            @Param("organizationId") UUID organizationId,
+            @Param("type") String type,
+            @Param("paymentId") String paymentId,
+            @Param("since") Instant since
+    );
 }

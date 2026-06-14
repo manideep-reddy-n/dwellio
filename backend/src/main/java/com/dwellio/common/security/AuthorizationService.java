@@ -33,6 +33,15 @@ public class AuthorizationService {
     }
 
     @Transactional(readOnly = true)
+    public boolean canViewAccommodationVisualization(UUID organizationId) {
+        tenantContext.requireOrganization(organizationId);
+        MembershipContext context = loadMembershipContext(organizationId);
+        return context.isOwner()
+                || context.hasPermission("building:manage")
+                || context.hasPermission("allocation:read_own");
+    }
+
+    @Transactional(readOnly = true)
     public boolean hasPermissionBySlug(String slug, String permission) {
         UUID organizationId = tenantContext.resolveOrganizationIdBySlug(slug);
         return hasPermission(organizationId, permission);

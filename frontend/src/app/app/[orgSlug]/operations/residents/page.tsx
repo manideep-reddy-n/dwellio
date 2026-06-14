@@ -3,6 +3,7 @@
 import { PageTransition } from "@/components/shared/page-transition";
 import { OperationsShell } from "@/components/operations/operations-shell";
 import { OpsGuard } from "@/components/operations/ops-guard";
+import { LeaveRequestsPanel } from "@/components/operations/leave-requests-panel";
 import { ResidentTable } from "@/components/operations/resident-table";
 import { useResidents } from "@/hooks/use-residents";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -22,6 +23,7 @@ export default function ResidentsPage() {
           title="Residents"
           description="Active resident memberships in your organization."
         >
+          {orgId && <LeaveRequestsPanel orgId={orgId} />}
           <ResidentTable
             residents={data}
             isLoading={isLoading}

@@ -1,6 +1,7 @@
 package com.dwellio.domain.entity;
 
 import com.dwellio.common.entity.SoftDeletableEntity;
+import com.dwellio.domain.enums.ChargeType;
 import com.dwellio.domain.enums.PaymentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,7 +12,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,10 +20,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(
-        name = "payments",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"membership_id", "billing_month"})
-)
+@Table(name = "payments")
 @Getter
 @Setter
 public class Payment extends SoftDeletableEntity {
@@ -46,12 +43,22 @@ public class Payment extends SoftDeletableEntity {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Column(name = "amount_paid", nullable = false, precision = 12, scale = 2)
+    private BigDecimal amountPaid = BigDecimal.ZERO;
+
     @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PaymentStatus status = PaymentStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "charge_type", nullable = false, length = 30)
+    private ChargeType chargeType = ChargeType.RENT;
+
+    @Column(length = 500)
+    private String description;
 
     @Column(columnDefinition = "TEXT")
     private String notes;

@@ -25,8 +25,10 @@ import com.dwellio.occupancy.dto.AllocateOccupancyRequest;
 import com.dwellio.occupancy.dto.OccupancyResponse;
 import com.dwellio.occupancy.dto.ReleaseOccupancyRequest;
 import com.dwellio.occupancy.dto.TransferOccupancyRequest;
+import com.dwellio.occupancy.dto.UpdateOccupancyRentRequest;
 import com.dwellio.occupancy.repository.OccupancyRepository;
 import com.dwellio.space.service.SpaceService;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +55,14 @@ public class OccupancyService {
                 ? occupancyRepository.findAllByOrganizationId(organizationId)
                 : occupancyRepository.findAllByOrganizationIdAndMembershipId(organizationId, membershipId);
         return occupancies.stream().map(OccupancyService::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OccupancyResponse> listForAdmin(UUID organizationId) {
+        if (!authorizationService.isPlatformAdmin()) {
+            throw new com.dwellio.common.exception.ForbiddenException("Platform admin access required");
+        }
+        return list(organizationId, null);
     }
 
     @Transactional(readOnly = true)
@@ -125,7 +135,8 @@ public class OccupancyService {
                     organization,
                     membership,
                     bedService.getActiveBed(organizationId, request.targetBedId()),
-                    request.transferDate()
+                    request.transferDate(),
+                    current.getMonthlyRent()
             );
         } else {
             if (request.targetUnitSpaceId() == null) {
@@ -196,6 +207,18 @@ public class OccupancyService {
         return toResponse(occupancy);
     }
 
+    @Transactional
+    public OccupancyResponse updateRent(UUID organizationId, UUID occupancyId, UpdateOccupancyRentRequest request) {
+        accommodationGuard.requireOrganization(organizationId);
+        authorizationService.requirePermission(organizationId, "resident:manage");
+        Occupancy occupancy = occupancyRepository.findById(occupancyId)
+                .filter(o -> o.getOrganization().getId().equals(organizationId))
+                .filter(Occupancy::isCurrent)
+                .orElseThrow(() -> new NotFoundException("Current occupancy not found"));
+        occupancy.setMonthlyRent(request.monthlyRent());
+        return toResponse(occupancyRepository.save(occupancy));
+    }
+
     private Occupancy allocateBed(
             Organization organization,
             Membership membership,
@@ -209,7 +232,7 @@ public class OccupancyService {
             throw new BadRequestException("unitSpaceId is not used for bed-based allocation");
         }
         Bed bed = bedService.getActiveBed(organization.getId(), request.bedId());
-        return createBedOccupancy(organization, membership, bed, request.moveInDate());
+        return createBedOccupancy(organization, membership, bed, request.moveInDate(), request.monthlyRent());
     }
 
     private Occupancy allocateUnit(
@@ -232,7 +255,8 @@ public class OccupancyService {
             Organization organization,
             Membership membership,
             Bed bed,
-            java.time.LocalDate moveInDate
+            java.time.LocalDate moveInDate,
+            BigDecimal monthlyRent
     ) {
         accommodationGuard.requireBedParentRoom(bed);
         validateAllocatableBed(bed);
@@ -244,6 +268,7 @@ public class OccupancyService {
         occupancy.setOccupancyTarget(OccupancyTarget.BED);
         occupancy.setBed(bed);
         occupancy.setMoveInDate(moveInDate);
+        occupancy.setMonthlyRent(resolveMonthlyRent(organization, monthlyRent));
         occupancy.setCurrent(true);
         occupancy = occupancyRepository.save(occupancy);
 
@@ -300,6 +325,16 @@ public class OccupancyService {
                 .orElseThrow(() -> new NotFoundException("Active membership not found"));
     }
 
+    private static BigDecimal resolveMonthlyRent(Organization organization, BigDecimal requested) {
+        if (requested != null && requested.signum() > 0) {
+            return requested;
+        }
+        if (organization.getDefaultMonthlyRent() != null && organization.getDefaultMonthlyRent().signum() > 0) {
+            return organization.getDefaultMonthlyRent();
+        }
+        return BigDecimal.valueOf(8000);
+    }
+
     static OccupancyResponse toResponse(Occupancy occupancy) {
         return new OccupancyResponse(
                 occupancy.getId(),
@@ -313,7 +348,8 @@ public class OccupancyService {
                 occupancy.getUnitSpace() != null ? occupancy.getUnitSpace().getIdentifier() : null,
                 occupancy.getMoveInDate(),
                 occupancy.getMoveOutDate(),
-                occupancy.isCurrent()
+                occupancy.isCurrent(),
+                occupancy.getMonthlyRent()
         );
     }
 }

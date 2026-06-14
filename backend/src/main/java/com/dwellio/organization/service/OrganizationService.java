@@ -16,8 +16,10 @@ import com.dwellio.domain.entity.RolePermission;
 import com.dwellio.domain.entity.SubscriptionPlan;
 import com.dwellio.domain.entity.User;
 import com.dwellio.domain.enums.AccommodationMode;
+import com.dwellio.domain.enums.HostelAudience;
 import com.dwellio.domain.enums.MembershipStatus;
 import com.dwellio.domain.enums.OrganizationStatus;
+import com.dwellio.domain.enums.OrganizationType;
 import com.dwellio.domain.enums.OrganizationTypeMapping;
 import com.dwellio.domain.enums.SubscriptionPlanCode;
 import com.dwellio.organization.dto.CreateOrganizationRequest;
@@ -32,6 +34,7 @@ import com.dwellio.role.repository.RoleRepository;
 import com.dwellio.membership.repository.MembershipRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +61,8 @@ public class OrganizationService {
             throw new ConflictException("Organization slug already exists");
         }
 
+        validateHostelAudience(request.type(), request.hostelAudience());
+
         SubscriptionPlan freePlan = subscriptionPlanRepository.findByCode(SubscriptionPlanCode.FREE)
                 .orElseGet(() -> subscriptionPlanRepository.findById(SystemConstants.FREE_PLAN_ID)
                         .orElseThrow(() -> new NotFoundException("Free plan not found")));
@@ -71,8 +76,9 @@ public class OrganizationService {
         organization.setName(request.name().trim());
         organization.setDescription(request.description());
         organization.setType(request.type());
+        organization.setHostelAudience(request.hostelAudience());
         organization.setAccommodationMode(OrganizationTypeMapping.defaultAccommodationMode(request.type()));
-        organization.setStatus(OrganizationStatus.PENDING);
+        organization.setStatus(OrganizationStatus.DRAFT);
         organization.setPlan(freePlan);
         organization.setCity(request.city().trim());
         organization.setArea(request.area());
@@ -81,6 +87,7 @@ public class OrganizationService {
         organization.setAddressLine(request.addressLine());
         organization.setContactPhone(request.contactPhone());
         organization.setContactEmail(request.contactEmail());
+        applyCoordinates(organization, request.latitude(), request.longitude());
         organization.setProfileCompletenessScore((short) 0);
         organization = organizationRepository.save(organization);
 
@@ -142,6 +149,17 @@ public class OrganizationService {
         if (request.contactEmail() != null) {
             organization.setContactEmail(request.contactEmail());
         }
+        applyCoordinates(organization, request.latitude(), request.longitude());
+        if (request.defaultMonthlyRent() != null) {
+            organization.setDefaultMonthlyRent(request.defaultMonthlyRent());
+        }
+        return toResponse(organization);
+    }
+
+    @Transactional
+    public OrganizationResponse updateLogoUrl(UUID organizationId, String logoUrl) {
+        Organization organization = findActiveOrganization(organizationId);
+        organization.setLogoUrl(logoUrl);
         return toResponse(organization);
     }
 
@@ -196,6 +214,7 @@ public class OrganizationService {
                 organization.getName(),
                 organization.getDescription(),
                 organization.getType(),
+                organization.getHostelAudience(),
                 organization.getAccommodationMode(),
                 organization.getStatus(),
                 organization.getCity(),
@@ -203,9 +222,32 @@ public class OrganizationService {
                 organization.getState(),
                 organization.getPostalCode(),
                 organization.getAddressLine(),
+                organization.getLatitude(),
+                organization.getLongitude(),
                 organization.getContactPhone(),
                 organization.getContactEmail(),
-                organization.getPlan().getCode().name()
+                organization.getPlan().getCode().name(),
+                organization.getDefaultMonthlyRent(),
+                organization.getLogoUrl()
         );
+    }
+
+    private static void validateHostelAudience(OrganizationType type, HostelAudience audience) {
+        boolean hostelLike = type == OrganizationType.HOSTEL || type == OrganizationType.PG;
+        if (hostelLike && audience == null) {
+            throw new BadRequestException("Hostel audience is required for hostels and PGs (boys, girls, or co-ed)");
+        }
+        if (!hostelLike && audience != null) {
+            throw new BadRequestException("Hostel audience applies only to hostels and PGs");
+        }
+    }
+
+    private static void applyCoordinates(Organization organization, BigDecimal latitude, BigDecimal longitude) {
+        if (latitude != null) {
+            organization.setLatitude(latitude);
+        }
+        if (longitude != null) {
+            organization.setLongitude(longitude);
+        }
     }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { AccommodationStructureNav } from "@/components/accommodation/accommodation-structure-nav";
 import { FloorPlan } from "@/components/accommodation/floor-plan";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
@@ -12,7 +12,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +21,7 @@ import {
   useAccommodationVisualization,
   useOccupancies,
 } from "@/hooks/use-accommodation";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useResidents } from "@/hooks/use-residents";
 import type { VizBedNode, VizSpaceNode } from "@/types/api/accommodation";
 import { toast } from "sonner";
@@ -31,23 +31,17 @@ interface AccommodationManagerProps {
 }
 
 export function AccommodationManager({ orgId }: AccommodationManagerProps) {
+  const { activeOrg } = usePermissions();
   const { data: viz, isLoading, isError, refetch } = useAccommodationVisualization(orgId);
   const { data: occupancies } = useOccupancies(orgId);
   const { data: residents } = useResidents(orgId);
   const mutations = useAccommodationMutations(orgId);
 
-  const [structureOpen, setStructureOpen] = useState(false);
   const [allocateOpen, setAllocateOpen] = useState(false);
-  const [buildingName, setBuildingName] = useState("");
-  const [floorNumber, setFloorNumber] = useState("1");
-  const [spaceId, setSpaceIdentifier] = useState("");
-  const [bedLabel, setBedLabel] = useState("");
-  const [selectedBuildingId, setSelectedBuildingId] = useState("");
-  const [selectedFloorId, setSelectedFloorId] = useState("");
-  const [selectedSpaceId, setSelectedSpaceId] = useState("");
   const [selectedBed, setSelectedBed] = useState<VizBedNode | null>(null);
   const [selectedSpace, setSelectedSpace] = useState<VizSpaceNode | null>(null);
   const [membershipId, setMembershipId] = useState("");
+  const [monthlyRent, setMonthlyRent] = useState("8000");
   const [moveInDate, setMoveInDate] = useState(new Date().toISOString().slice(0, 10));
   const [transferOpen, setTransferOpen] = useState(false);
   const [releaseOpen, setReleaseOpen] = useState(false);
@@ -58,61 +52,6 @@ export function AccommodationManager({ orgId }: AccommodationManagerProps) {
   if (isLoading) return <Skeleton className="h-96 w-full rounded-xl" />;
   if (isError) return <ErrorState onRetry={() => void refetch()} />;
 
-  async function handleAddBuilding() {
-    if (!buildingName.trim()) return;
-    try {
-      await mutations.createBuilding.mutateAsync({ name: buildingName.trim() });
-      toast.success("Building created");
-      setBuildingName("");
-    } catch {
-      toast.error("Could not create building");
-    }
-  }
-
-  async function handleAddFloor() {
-    if (!selectedBuildingId) {
-      toast.error("Select a building first");
-      return;
-    }
-    try {
-      await mutations.createFloor.mutateAsync({
-        buildingId: selectedBuildingId,
-        body: { floorNumber: Number(floorNumber), name: `Floor ${floorNumber}` },
-      });
-      toast.success("Floor created");
-    } catch {
-      toast.error("Could not create floor");
-    }
-  }
-
-  async function handleAddSpace() {
-    if (!selectedFloorId || !spaceId.trim()) return;
-    try {
-      await mutations.createSpace.mutateAsync({
-        floorId: selectedFloorId,
-        body: { identifier: spaceId.trim() },
-      });
-      toast.success("Space created");
-      setSpaceIdentifier("");
-    } catch {
-      toast.error("Could not create space");
-    }
-  }
-
-  async function handleAddBed() {
-    if (!selectedSpaceId || !bedLabel.trim()) return;
-    try {
-      await mutations.createBed.mutateAsync({
-        spaceId: selectedSpaceId,
-        bedLabel: bedLabel.trim(),
-      });
-      toast.success("Bed created");
-      setBedLabel("");
-    } catch {
-      toast.error("Could not create bed");
-    }
-  }
-
   async function handleAllocate() {
     if (!membershipId || !moveInDate) return;
     try {
@@ -121,6 +60,7 @@ export function AccommodationManager({ orgId }: AccommodationManagerProps) {
         bedId: selectedBed?.id,
         unitSpaceId: selectedSpace && !selectedBed ? selectedSpace.id : undefined,
         moveInDate,
+        monthlyRent: Number(monthlyRent) || undefined,
       });
       toast.success("Allocated");
       setAllocateOpen(false);
@@ -168,114 +108,6 @@ export function AccommodationManager({ orgId }: AccommodationManagerProps) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        <Dialog open={structureOpen} onOpenChange={setStructureOpen}>
-          <DialogTrigger render={<Button variant="outline" className="gap-2" />}>
-            <Plus className="size-4" />
-            Add structure
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Accommodation structure</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2 rounded-lg border p-3">
-                <Label>Building</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Building name"
-                    value={buildingName}
-                    onChange={(e) => setBuildingName(e.target.value)}
-                  />
-                  <Button onClick={() => void handleAddBuilding()}>Add</Button>
-                </div>
-              </div>
-              <div className="space-y-2 rounded-lg border p-3">
-                <Label>Floor</Label>
-                <select
-                  className="mb-2 flex h-9 w-full rounded-lg border bg-background px-3 text-sm"
-                  value={selectedBuildingId}
-                  onChange={(e) => setSelectedBuildingId(e.target.value)}
-                >
-                  <option value="">Building…</option>
-                  {viz?.buildings.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={floorNumber}
-                    onChange={(e) => setFloorNumber(e.target.value)}
-                  />
-                  <Button onClick={() => void handleAddFloor()}>Add floor</Button>
-                </div>
-              </div>
-              <div className="space-y-2 rounded-lg border p-3">
-                <Label>Space / Room</Label>
-                <select
-                  className="mb-2 flex h-9 w-full rounded-lg border bg-background px-3 text-sm"
-                  value={selectedFloorId}
-                  onChange={(e) => setSelectedFloorId(e.target.value)}
-                >
-                  <option value="">Floor…</option>
-                  {viz?.buildings.flatMap((b) =>
-                    b.floors.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {b.name} · Floor {f.floorNumber}
-                      </option>
-                    )),
-                  )}
-                </select>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Room 101"
-                    value={spaceId}
-                    onChange={(e) => setSpaceIdentifier(e.target.value)}
-                  />
-                  <Button onClick={() => void handleAddSpace()}>Add</Button>
-                </div>
-              </div>
-              {viz?.accommodationMode === "BED_BASED" && (
-                <div className="space-y-2 rounded-lg border p-3">
-                  <Label>Bed</Label>
-                  <select
-                    className="mb-2 flex h-9 w-full rounded-lg border bg-background px-3 text-sm"
-                    value={selectedSpaceId}
-                    onChange={(e) => setSelectedSpaceId(e.target.value)}
-                  >
-                    <option value="">Space…</option>
-                    {viz.buildings.flatMap((b) =>
-                      b.floors.flatMap((f) =>
-                        f.spaces.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {b.name} · {s.identifier}
-                          </option>
-                        )),
-                      ),
-                    )}
-                  </select>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="A"
-                      value={bedLabel}
-                      onChange={(e) => setBedLabel(e.target.value)}
-                    />
-                    <Button onClick={() => void handleAddBed()}>Add bed</Button>
-                  </div>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setStructureOpen(false)}>
-                Done
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
         <Button onClick={() => openAllocate()}>Allocate resident</Button>
         <Button variant="outline" onClick={() => setTransferOpen(true)}>
           Transfer
@@ -302,11 +134,28 @@ export function AccommodationManager({ orgId }: AccommodationManagerProps) {
       )}
 
       {viz ? (
-        <FloorPlan
-          visualization={viz}
-          onSelectBed={(bed, space) => openAllocate(bed, space)}
-          onSelectSpace={(space) => openAllocate(null, space)}
-        />
+        <div className="space-y-6">
+          <AccommodationStructureNav
+            visualization={viz}
+            occupancies={occupancies}
+            mutations={mutations}
+            onSelectBed={(bed, space) => openAllocate(bed, space)}
+            onSelectSpace={(space) => openAllocate(null, space)}
+          />
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">Resident preview</h3>
+            <p className="mb-3 text-xs text-muted-foreground">
+              This is what residents see. Use the pencil icon to adjust block positions only.
+            </p>
+            <FloorPlan
+              visualization={viz}
+              propertyName={activeOrg?.name ?? "Property"}
+              allowLayoutEdit
+              onLayoutSave={(update) => mutations.updateLayout.mutate(update)}
+            />
+          </div>
+        </div>
       ) : (
         <EmptyState title="No visualization data" />
       )}
@@ -348,6 +197,21 @@ export function AccommodationManager({ orgId }: AccommodationManagerProps) {
                 onChange={(e) => setMoveInDate(e.target.value)}
               />
             </div>
+            {viz?.accommodationMode === "BED_BASED" && (
+              <div className="space-y-1">
+                <Label>Monthly rent (₹)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={monthlyRent}
+                  onChange={(e) => setMonthlyRent(e.target.value)}
+                  placeholder="e.g. 8000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Rent is billed monthly from move-in date. Each resident can have a different amount.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAllocateOpen(false)}>

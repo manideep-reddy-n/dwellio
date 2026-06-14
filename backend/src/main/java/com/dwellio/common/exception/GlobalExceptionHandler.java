@@ -2,6 +2,7 @@ package com.dwellio.common.exception;
 
 import java.time.Instant;
 import java.util.Map;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -23,6 +24,18 @@ public class GlobalExceptionHandler {
                 .map(FieldError::getDefaultMessage)
                 .orElse("Validation failed");
         return ResponseEntity.badRequest().body(errorBody(400, message));
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<Map<String, Object>> handleDataAccess(DataAccessException ex) {
+        return ResponseEntity.internalServerError()
+                .body(errorBody(500, "Database error while processing request"));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleUnexpected(Exception ex) {
+        return ResponseEntity.internalServerError()
+                .body(errorBody(500, "Unexpected server error"));
     }
 
     private Map<String, Object> errorBody(int status, String message) {

@@ -14,6 +14,11 @@ function hasSession(request: NextRequest): boolean {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/admin")) {
+    return NextResponse.next();
+  }
+
   const authenticated = hasSession(request);
 
   const isProtected = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
@@ -33,5 +38,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app/:path*", "/admin/:path*", "/login", "/register"],
+  matcher: ["/app", "/app/:path*", "/admin", "/admin/:path*", "/login", "/register"],
 };

@@ -105,6 +105,25 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
                 r.ownerRole = TRUE
                 OR EXISTS (
                     SELECT 1 FROM RolePermission rp
+                    JOIN rp.permission p
+                    WHERE rp.roleId = r.id
+                      AND p.code = 'resident:approve'
+                )
+              )
+            """)
+    List<Membership> findActiveJoinApproversByOrganizationId(@Param("organizationId") UUID organizationId);
+
+    @Query("""
+            SELECT DISTINCT m FROM Membership m
+            JOIN FETCH m.user u
+            JOIN FETCH m.role r
+            WHERE m.organization.id = :organizationId
+              AND m.status = 'ACTIVE'
+              AND m.deletedAt IS NULL
+              AND (
+                r.ownerRole = TRUE
+                OR EXISTS (
+                    SELECT 1 FROM RolePermission rp
                     WHERE rp.roleId = r.id
                       AND rp.permission.code IN ('complaint:read', 'complaint:manage', 'complaint:assign')
                 )

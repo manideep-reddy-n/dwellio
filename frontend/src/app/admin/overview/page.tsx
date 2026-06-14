@@ -5,12 +5,13 @@ import { Building2, HeartPulse, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/shared/error-state";
+import { PageTitle } from "@/components/shared/page-title";
 import { healthApi } from "@/lib/api/health";
 import { marketplaceApi } from "@/lib/api/marketplace";
-import { useAuth } from "@/hooks/use-auth";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 export default function AdminOverviewPage() {
-  const { user } = useAuth();
+  const { session } = useAdminAuth();
 
   const health = useQuery({
     queryKey: ["admin", "health"],
@@ -24,10 +25,11 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="space-y-6">
+      <PageTitle title="Admin overview" />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Platform overview</h1>
         <p className="mt-1 text-muted-foreground">
-          Signed in as {user?.fullName} — platform administrator
+          Signed in as {session?.userName ?? "Administrator"} — platform administrator
         </p>
       </div>
 

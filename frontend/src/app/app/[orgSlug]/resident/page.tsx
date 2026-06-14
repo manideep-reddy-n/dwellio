@@ -1,12 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { AccommodationSummaryCard } from "@/components/resident/accommodation-summary-card";
 import { AnnouncementFeed } from "@/components/resident/announcement-feed";
 import { ComplaintCreateDialog } from "@/components/resident/complaint-create-dialog";
 import { ComplaintList, ComplaintListFooter } from "@/components/resident/complaint-list";
+import { ResidentHomeHero } from "@/components/resident/resident-home-hero";
+import { ResidentMenuCard } from "@/components/food-menu/resident-menu-card";
 import { PageTransition } from "@/components/shared/page-transition";
+import { PageTitle } from "@/components/shared/page-title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAnnouncements } from "@/hooks/use-announcements";
 import { useMyComplaints } from "@/hooks/use-complaints";
@@ -24,19 +28,29 @@ export default function ResidentHomePage() {
   const openComplaints =
     complaints?.filter((c) => !["RESOLVED", "CLOSED"].includes(c.status)).length ?? 0;
 
+  useEffect(() => {
+    if (window.location.hash === "#menu") {
+      window.requestAnimationFrame(() => {
+        document.getElementById("menu")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, []);
+
   return (
     <PageTransition>
+      <PageTitle title="My stay" />
       <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Resident home</h1>
-            <p className="mt-1 text-muted-foreground">
-              {activeOrg?.name ?? "Your stay"} — updates arrive in real time.
-            </p>
-          </div>
-          {can("complaint:create") && orgId && (
-            <ComplaintCreateDialog orgId={orgId} />
-          )}
+        <ResidentHomeHero
+          orgName={activeOrg?.name ?? "Your stay"}
+          orgSlug={orgSlug ?? ""}
+          orgLogoUrl={activeOrg?.logoUrl}
+          openComplaints={openComplaints}
+        />
+
+        <ResidentMenuCard orgId={orgId} organizationType={activeOrg?.organizationType} />
+
+        <div className="flex justify-end">
+          {can("complaint:create") && orgId && <ComplaintCreateDialog orgId={orgId} />}
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">

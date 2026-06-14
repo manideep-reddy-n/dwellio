@@ -82,6 +82,8 @@ export function useMarkNotificationRead() {
   });
 }
 
+const NOTIFICATIONS_ROOT = [...queryKeys.all, "notifications"] as const;
+
 export function useMarkAllNotificationsRead() {
   const queryClient = useQueryClient();
   const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
@@ -89,16 +91,16 @@ export function useMarkAllNotificationsRead() {
   return useMutation({
     mutationFn: () => notificationsApi.markAllRead(),
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.notifications.inbox() });
+      await queryClient.cancelQueries({ queryKey: NOTIFICATIONS_ROOT });
 
       const previousPages = queryClient.getQueriesData<{ pages: PagedNotifications[] }>({
-        queryKey: queryKeys.notifications.inbox(),
+        queryKey: NOTIFICATIONS_ROOT,
       });
 
       queryClient.setQueriesData<{ pages: PagedNotifications[]; pageParams: unknown[] }>(
-        { queryKey: queryKeys.notifications.inbox() },
+        { queryKey: NOTIFICATIONS_ROOT },
         (old) => {
-          if (!old) return old;
+          if (!old?.pages || !Array.isArray(old.pages)) return old;
           const now = new Date().toISOString();
           return {
             ...old,
@@ -122,8 +124,8 @@ export function useMarkAllNotificationsRead() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
     },
     onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_ROOT });
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.inbox() });
     },
   });
 }

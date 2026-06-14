@@ -1,16 +1,24 @@
+export type HostelAudience = "BOYS" | "GIRLS" | "CO_ED";
+
 export type OrganizationType =
   | "HOSTEL"
   | "PG"
   | "CO_LIVING"
   | "GATED_COMMUNITY";
 
-export type OrganizationStatus = "PENDING" | "VERIFIED" | "SUSPENDED" | "ARCHIVED";
+export type OrganizationStatus =
+  | "DRAFT"
+  | "PENDING_VERIFICATION"
+  | "VERIFIED"
+  | "SUSPENDED"
+  | "REJECTED";
 
 export type AccommodationMode = "BED_BASED" | "UNIT_BASED";
 
 export type NotificationType =
   | "JOIN_REQUEST_APPROVED"
   | "JOIN_REQUEST_REJECTED"
+  | "JOIN_REQUEST_SUBMITTED"
   | "COMPLAINT_CREATED"
   | "COMPLAINT_ASSIGNED"
   | "COMPLAINT_RESOLVED"
@@ -19,6 +27,19 @@ export type NotificationType =
   | "OCCUPANCY_ALLOCATED"
   | "OCCUPANCY_TRANSFERRED"
   | "REVIEW_REPORTED"
+  | "AVAILABILITY_OPEN"
+  | "PAYMENT_DUE"
+  | "INVOICE_SHARED"
+  | "LEAVE_REQUEST_SUBMITTED"
+  | "LEAVE_REQUEST_APPROVED"
+  | "LEAVE_REQUEST_REJECTED"
+  | "FOOD_MENU_UPDATED"
+  | "ORGANIZATION_VERIFIED"
+  | "ORGANIZATION_VERIFICATION_SUBMITTED"
+  | "ORGANIZATION_VERIFICATION_REJECTED"
+  | "ORGANIZATION_VERIFICATION_MORE_INFO"
+  | "ORGANIZATION_SUSPENDED"
+  | "SUSPENSION_APPEAL_SUBMITTED"
   | "SYSTEM";
 
 export type NotificationStatus = "UNREAD" | "READ";

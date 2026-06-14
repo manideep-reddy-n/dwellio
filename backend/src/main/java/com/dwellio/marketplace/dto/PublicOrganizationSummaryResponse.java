@@ -3,6 +3,8 @@ package com.dwellio.marketplace.dto;
 import com.dwellio.domain.entity.Organization;
 import com.dwellio.domain.entity.OrganizationMetricsCache;
 import com.dwellio.domain.enums.AccommodationMode;
+import com.dwellio.domain.enums.HostelAudience;
+import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -13,9 +15,14 @@ public record PublicOrganizationSummaryResponse(
         String name,
         String description,
         OrganizationType type,
+        HostelAudience hostelAudience,
         AccommodationMode accommodationMode,
         String city,
         String area,
+        BigDecimal latitude,
+        BigDecimal longitude,
+        String logoUrl,
+        boolean verified,
         PublicOrganizationMetrics metrics
 ) {
     public static PublicOrganizationSummaryResponse from(
@@ -28,9 +35,14 @@ public record PublicOrganizationSummaryResponse(
                 organization.getName(),
                 organization.getDescription(),
                 organization.getType(),
+                organization.getHostelAudience(),
                 organization.getAccommodationMode(),
                 organization.getCity(),
                 organization.getArea(),
+                organization.getLatitude(),
+                organization.getLongitude(),
+                organization.getLogoUrl(),
+                organization.getStatus() == OrganizationStatus.VERIFIED,
                 PublicOrganizationMetrics.from(cache)
         );
     }
@@ -42,9 +54,14 @@ public record PublicOrganizationSummaryResponse(
                 organization.getName(),
                 organization.getDescription(),
                 organization.getType(),
+                organization.getHostelAudience(),
                 organization.getAccommodationMode(),
                 organization.getCity(),
                 organization.getArea(),
+                organization.getLatitude(),
+                organization.getLongitude(),
+                organization.getLogoUrl(),
+                organization.getStatus() == OrganizationStatus.VERIFIED,
                 PublicOrganizationMetrics.empty()
         );
     }

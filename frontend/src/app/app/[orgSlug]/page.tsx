@@ -17,7 +17,7 @@ export default function OrgHubRedirect() {
     if (activeOrg && activeOrg.slug !== orgSlug) return;
 
     if (canAccessOperations(permissions, isOwner)) {
-      router.replace(`/app/${orgSlug}/operations/live`);
+      router.replace(`/app/${orgSlug}/operations`);
     } else {
       router.replace(`/app/${orgSlug}/resident`);
     }
