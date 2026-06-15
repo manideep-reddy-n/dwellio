@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
+import { countByField, StatusFilterTabs } from "@/components/shared/status-filter-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,22 @@ import { toast } from "sonner";
 
 const statuses: AssetStatus[] = ["OPERATIONAL", "MAINTENANCE", "OUT_OF_SERVICE", "RETIRED"];
 
+const ASSET_FILTERS: Array<AssetStatus | "ALL"> = [
+  "ALL",
+  "OPERATIONAL",
+  "MAINTENANCE",
+  "OUT_OF_SERVICE",
+  "RETIRED",
+];
+
+const ASSET_FILTER_LABELS: Record<AssetStatus | "ALL", string> = {
+  ALL: "All",
+  OPERATIONAL: "Operational",
+  MAINTENANCE: "Maintenance",
+  OUT_OF_SERVICE: "Out of service",
+  RETIRED: "Retired",
+};
+
 interface AssetManagerProps {
   orgId: string;
   assets: Asset[] | undefined;
@@ -38,6 +55,27 @@ export function AssetManager({ orgId, assets, isLoading, isError, onRetry }: Ass
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
+  const [statusFilter, setStatusFilter] = useState<AssetStatus | "ALL">("ALL");
+
+  const allAssets = assets ?? [];
+
+  const filteredAssets = useMemo(
+    () =>
+      statusFilter === "ALL"
+        ? allAssets
+        : allAssets.filter((asset) => asset.status === statusFilter),
+    [allAssets, statusFilter],
+  );
+
+  const filterOptions = useMemo(
+    () =>
+      ASSET_FILTERS.map((value) => ({
+        value,
+        label: ASSET_FILTER_LABELS[value],
+        count: countByField(allAssets, "status", value),
+      })),
+    [allAssets],
+  );
 
   if (isLoading) return <Skeleton className="h-48 w-full rounded-xl" />;
   if (isError) return <ErrorState onRetry={onRetry} />;
@@ -97,51 +135,66 @@ export function AssetManager({ orgId, assets, isLoading, isError, onRetry }: Ass
         </Dialog>
       </div>
 
-      {!assets?.length ? (
+      {!allAssets.length ? (
         <EmptyState title="No assets" description="Track equipment and fixtures across your property." />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {assets.map((asset) => (
-            <Card key={asset.id}>
-              <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-base">{asset.name}</CardTitle>
-                <Badge variant="outline">{asset.status}</Badge>
-              </CardHeader>
-              <CardContent className="space-y-2 pt-0">
-                <p className="text-sm text-muted-foreground">{asset.category}</p>
-                <p className="text-xs text-muted-foreground">
-                  Updated {formatRelativeTime(asset.updatedAt)}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    className="h-8 rounded-md border bg-background px-2 text-xs"
-                    value={asset.status}
-                    onChange={(e) =>
-                      update.mutate({
-                        id: asset.id,
-                        input: { status: e.target.value as AssetStatus },
-                      })
-                    }
-                  >
-                    {statuses.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={remove.isPending}
-                    onClick={() => remove.mutate(asset.id)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <>
+          <StatusFilterTabs
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={filterOptions}
+          />
+
+          {filteredAssets.length === 0 ? (
+            <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+              No {statusFilter === "ALL" ? "" : ASSET_FILTER_LABELS[statusFilter].toLowerCase() + " "}
+              assets in this view.
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {filteredAssets.map((asset) => (
+                <Card key={asset.id}>
+                  <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
+                    <CardTitle className="text-base">{asset.name}</CardTitle>
+                    <Badge variant="outline">{asset.status}</Badge>
+                  </CardHeader>
+                  <CardContent className="space-y-2 pt-0">
+                    <p className="text-sm text-muted-foreground">{asset.category}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Updated {formatRelativeTime(asset.updatedAt)}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <select
+                        className="h-8 rounded-md border bg-background px-2 text-xs"
+                        value={asset.status}
+                        onChange={(e) =>
+                          update.mutate({
+                            id: asset.id,
+                            input: { status: e.target.value as AssetStatus },
+                          })
+                        }
+                      >
+                        {statuses.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={remove.isPending}
+                        onClick={() => remove.mutate(asset.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

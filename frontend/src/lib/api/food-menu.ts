@@ -42,4 +42,13 @@ export const foodMenuApi = {
       method: "PATCH",
       body,
     }),
+
+  updateTodayBatch: (
+    orgId: string,
+    meals: Array<{ mealType: MealType; items: string }>,
+  ) =>
+    apiRequest<TodayMenu>(apiConfig.baseUrl, `/organizations/${orgId}/food-menu/today`, {
+      method: "PUT",
+      body: { meals },
+    }),
 };

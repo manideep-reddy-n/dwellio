@@ -9,8 +9,10 @@ import { ComplaintCreateDialog } from "@/components/resident/complaint-create-di
 import { ComplaintList, ComplaintListFooter } from "@/components/resident/complaint-list";
 import { ResidentHomeHero } from "@/components/resident/resident-home-hero";
 import { ResidentMenuCard } from "@/components/food-menu/resident-menu-card";
+import { PropertyTeamCard } from "@/components/resident/property-team-card";
 import { PageTransition } from "@/components/shared/page-transition";
 import { PageTitle } from "@/components/shared/page-title";
+import { MyRoleCard } from "@/components/shared/my-role-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAnnouncements } from "@/hooks/use-announcements";
 import { useMyComplaints } from "@/hooks/use-complaints";
@@ -46,6 +48,11 @@ export default function ResidentHomePage() {
           orgLogoUrl={activeOrg?.logoUrl}
           openComplaints={openComplaints}
         />
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <MyRoleCard />
+          <PropertyTeamCard orgId={orgId} />
+        </div>
 
         <ResidentMenuCard orgId={orgId} organizationType={activeOrg?.organizationType} />
 

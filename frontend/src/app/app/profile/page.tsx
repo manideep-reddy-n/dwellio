@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import { LogOut, Shield } from "lucide-react";
+import { ProfileSettingsForm } from "@/components/profile/profile-settings-form";
 import { PageTransition } from "@/components/shared/page-transition";
 import { PageTitle } from "@/components/shared/page-title";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -19,6 +21,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLeaveOrganization } from "@/hooks/use-leave-organization";
 import { useMyMemberships } from "@/hooks/use-memberships";
 import { orgHomePath } from "@/lib/navigation/app-routing";
+import { permissionLabels } from "@/lib/permissions/labels";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -40,33 +43,21 @@ export default function ProfilePage() {
           <p className="mt-1 text-muted-foreground">Profile, memberships, leave requests, and session.</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Profile</CardTitle>
-            <CardDescription>Your Dwellio identity</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="text-muted-foreground">Name</span>
-              <br />
-              <span className="font-medium">{user?.fullName}</span>
-            </p>
-            <p>
-              <span className="text-muted-foreground">Email</span>
-              <br />
-              <span className="font-medium">{user?.email}</span>
-            </p>
-            {user?.platformAdmin && (
-              <p className="inline-flex items-center gap-1.5 text-teal-700">
+        <ProfileSettingsForm memberships={memberships} />
+
+        {user?.platformAdmin && (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="inline-flex items-center gap-1.5 text-sm text-teal-700">
                 <Shield className="size-4" />
                 Platform administrator ·{" "}
                 <Link href="/admin/login" className="underline">
                   Open admin console
                 </Link>
               </p>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -95,6 +86,16 @@ export default function ProfilePage() {
                     {m.roleName}
                     {m.ownerRole ? " · Owner" : ""}
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {(m.ownerRole
+                      ? ["Full access to all organization operations"]
+                      : m.permissions.map((code) => permissionLabels[code] ?? code)
+                    ).map((label) => (
+                      <Badge key={label} variant="secondary" className="text-[10px] font-normal">
+                        {label}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Link

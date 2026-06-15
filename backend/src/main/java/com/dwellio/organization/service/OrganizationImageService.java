@@ -47,7 +47,7 @@ public class OrganizationImageService {
 
         String ext = extension(file.getContentType());
         String filename = UUID.randomUUID() + "." + ext;
-        MediaStorageService.StoredMedia stored = mediaStorage.storeImage(file, "org-images", filename);
+        MediaStorageService.StoredMedia stored = mediaStorage.storeImageAutoNamed(file, "org-images", filename);
 
         int sortOrder = imageRepository.findAllActiveByOrganizationId(organizationId).size();
         OrganizationImage image = new OrganizationImage();

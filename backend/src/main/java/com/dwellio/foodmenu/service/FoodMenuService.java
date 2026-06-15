@@ -10,6 +10,7 @@ import com.dwellio.domain.enums.OrganizationType;
 import com.dwellio.foodmenu.dto.FoodMenuDayResponse;
 import com.dwellio.foodmenu.dto.FoodMenuMealResponse;
 import com.dwellio.foodmenu.dto.TodayMenuResponse;
+import com.dwellio.foodmenu.dto.UpdateTodayMenuBatchRequest;
 import com.dwellio.foodmenu.dto.UpdateTodayMenuOverrideRequest;
 import com.dwellio.foodmenu.dto.UpdateWeeklyMenuSlotRequest;
 import com.dwellio.foodmenu.repository.FoodMenuDailyOverrideRepository;
@@ -104,22 +105,45 @@ public class FoodMenuService {
         Organization organization = requireFoodMenuOrg(organizationId);
         LocalDate today = LocalDate.now(clock);
 
+        saveTodayOverride(organization, organizationId, today, request.mealType(), request.items());
+        notifyResidentsMenuChanged(organizationId, organization.getSlug());
+
+        return buildTodayMenu(organizationId, today);
+    }
+
+    @Transactional
+    public TodayMenuResponse updateTodayOverrides(UUID organizationId, UpdateTodayMenuBatchRequest request) {
+        authorizationService.requirePermission(organizationId, "organization:update");
+        Organization organization = requireFoodMenuOrg(organizationId);
+        LocalDate today = LocalDate.now(clock);
+
+        for (UpdateTodayMenuBatchRequest.MealOverride meal : request.meals()) {
+            saveTodayOverride(organization, organizationId, today, meal.mealType(), meal.items());
+        }
+        notifyResidentsMenuChanged(organizationId, organization.getSlug());
+
+        return buildTodayMenu(organizationId, today);
+    }
+
+    private void saveTodayOverride(
+            Organization organization,
+            UUID organizationId,
+            LocalDate today,
+            MealType mealType,
+            String items
+    ) {
         FoodMenuDailyOverride override = overrideRepository
-                .findByOrganizationIdAndMenuDateAndMealType(organizationId, today, request.mealType())
+                .findByOrganizationIdAndMenuDateAndMealType(organizationId, today, mealType)
                 .orElseGet(() -> {
                     FoodMenuDailyOverride created = new FoodMenuDailyOverride();
                     created.setId(UUID.randomUUID());
                     created.setOrganization(organization);
                     created.setMenuDate(today);
-                    created.setMealType(request.mealType());
+                    created.setMealType(mealType);
                     return created;
                 });
-        override.setItems(request.items() != null ? request.items().trim() : "");
+        override.setItems(items != null ? items.trim() : "");
         overrideRepository.save(override);
-
-        notifyResidentsMenuChanged(organizationId, organization.getSlug(), request.mealType());
-
-        return buildTodayMenu(organizationId, today);
     }
 
     private TodayMenuResponse buildTodayMenu(UUID organizationId, LocalDate date) {
@@ -166,19 +190,18 @@ public class FoodMenuService {
         return organization;
     }
 
-    private void notifyResidentsMenuChanged(UUID organizationId, String slug, MealType mealType) {
+    private void notifyResidentsMenuChanged(UUID organizationId, String slug) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("organizationId", organizationId.toString());
         payload.put("organizationSlug", slug);
         payload.put("targetPath", "/app/" + slug + "/resident#menu");
-        payload.put("mealType", mealType.name());
         for (var resident : membershipRepository.findActiveResidentsByOrganizationId(organizationId)) {
             notificationService.create(
                     resident.getUser().getId(),
                     organizationId,
                     NotificationType.FOOD_MENU_UPDATED,
                     "Today's menu updated",
-                    "Today's %s menu has been updated.".formatted(mealType.name().toLowerCase()),
+                    "Today's food menu has been updated.",
                     payload
             );
         }

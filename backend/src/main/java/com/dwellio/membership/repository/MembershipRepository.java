@@ -36,6 +36,20 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
     );
 
     @Query("""
+            SELECT m FROM Membership m
+            JOIN FETCH m.role r
+            JOIN FETCH m.organization o
+            WHERE m.user.id = :userId
+              AND o.slug = :slug
+              AND m.status = 'ACTIVE'
+              AND m.deletedAt IS NULL
+            """)
+    Optional<Membership> findActiveByUserIdAndOrganizationSlug(
+            @Param("userId") UUID userId,
+            @Param("slug") String slug
+    );
+
+    @Query("""
             SELECT COUNT(m) > 0 FROM Membership m
             WHERE m.user.id = :userId
               AND m.organization.id = :organizationId
@@ -93,6 +107,18 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
               AND r.ownerRole = TRUE
             """)
     List<Membership> findActiveOwnersByOrganizationId(@Param("organizationId") UUID organizationId);
+
+    @Query("""
+            SELECT m FROM Membership m
+            JOIN FETCH m.user u
+            JOIN FETCH m.role r
+            WHERE m.organization.id = :organizationId
+              AND m.status = 'ACTIVE'
+              AND m.deletedAt IS NULL
+              AND (r.ownerRole = TRUE OR r.name <> 'RESIDENT')
+            ORDER BY r.ownerRole DESC, r.name ASC
+            """)
+    List<Membership> findActiveTeamByOrganizationId(@Param("organizationId") UUID organizationId);
 
     @Query("""
             SELECT DISTINCT m FROM Membership m

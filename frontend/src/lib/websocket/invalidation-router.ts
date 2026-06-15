@@ -93,6 +93,7 @@ export function getInvalidationsForNotification(
       };
 
     case "PAYMENT_DUE":
+    case "PAYMENT_RECORDED":
       return {
         queryKeys: org
           ? [

@@ -1,6 +1,6 @@
 import { apiConfig } from "@/config/api";
 import { apiRequest } from "@/lib/api/client";
-import type { OrgMembership } from "@/types/api/membership";
+import type { OrgMembership, OrganizationTeamMember } from "@/types/api/membership";
 import type { Role } from "@/types/api/role";
 
 export interface StaffInviteResult {
@@ -12,6 +12,9 @@ export interface StaffInviteResult {
 export const membershipsApi = {
   list: (orgId: string) =>
     apiRequest<OrgMembership[]>(apiConfig.baseUrl, `/organizations/${orgId}/memberships`),
+
+  team: (orgId: string) =>
+    apiRequest<OrganizationTeamMember[]>(apiConfig.baseUrl, `/organizations/${orgId}/team`),
 
   inviteStaff: (orgId: string, email: string, roleId: string) =>
     apiRequest<StaffInviteResult>(apiConfig.baseUrl, `/organizations/${orgId}/staff/invite`, {

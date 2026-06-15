@@ -2,14 +2,18 @@ import { apiConfig } from "@/config/api";
 import { apiRequest } from "@/lib/api/client";
 import type { JoinRequest } from "@/types/api/join-request";
 
+export interface SubmitJoinRequestInput {
+  message?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}
+
 export const joinRequestsApi = {
-  submit: (orgId: string, input?: string | { message?: string }) => {
-    const message = typeof input === "string" ? input : input?.message;
-    return apiRequest<JoinRequest>(apiConfig.baseUrl, `/organizations/${orgId}/join-requests`, {
+  submit: (orgId: string, input: SubmitJoinRequestInput) =>
+    apiRequest<JoinRequest>(apiConfig.baseUrl, `/organizations/${orgId}/join-requests`, {
       method: "POST",
-      body: message ? { message } : {},
-    });
-  },
+      body: input,
+    }),
 
   list: (orgId: string) =>
     apiRequest<JoinRequest[]>(apiConfig.baseUrl, `/organizations/${orgId}/join-requests`),

@@ -2,6 +2,7 @@ package com.dwellio.foodmenu.controller;
 
 import com.dwellio.foodmenu.dto.FoodMenuDayResponse;
 import com.dwellio.foodmenu.dto.TodayMenuResponse;
+import com.dwellio.foodmenu.dto.UpdateTodayMenuBatchRequest;
 import com.dwellio.foodmenu.dto.UpdateTodayMenuOverrideRequest;
 import com.dwellio.foodmenu.dto.UpdateWeeklyMenuSlotRequest;
 import com.dwellio.foodmenu.service.FoodMenuService;
@@ -13,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -52,5 +54,14 @@ public class FoodMenuController {
             @Valid @RequestBody UpdateTodayMenuOverrideRequest request
     ) {
         return foodMenuService.updateTodayOverride(organizationId, request);
+    }
+
+    @PutMapping("/today")
+    @PreAuthorize("@authz.hasPermission(#organizationId, 'organization:update')")
+    public TodayMenuResponse updateTodayBatch(
+            @PathVariable UUID organizationId,
+            @Valid @RequestBody UpdateTodayMenuBatchRequest request
+    ) {
+        return foodMenuService.updateTodayOverrides(organizationId, request);
     }
 }

@@ -12,7 +12,7 @@ import { useUiStore } from "@/stores/ui-store";
 
 interface NotificationRowProps {
   notification: Notification;
-  onMarkRead: (id: string) => void;
+  onMarkRead: (id: string) => Promise<unknown>;
   isMarking?: boolean;
 }
 
@@ -63,8 +63,12 @@ export function NotificationRow({ notification, onMarkRead, isMarking }: Notific
   );
 
   function navigate() {
-    if (isUnread) onMarkRead(notification.id);
-    router.push(href ?? "/app/notifications");
+    void (async () => {
+      if (isUnread) {
+        await onMarkRead(notification.id);
+      }
+      router.push(href ?? "/app/notifications");
+    })();
   }
 
   return (

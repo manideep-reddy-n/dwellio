@@ -23,7 +23,13 @@ export interface LoginRequest {
 export interface RegisterRequest {
   fullName: string;
   email: string;
+  phone: string;
   password: string;
+}
+
+export interface UpdateProfileRequest {
+  fullName: string;
+  phone: string;
 }
 
 export interface RefreshTokenRequest {

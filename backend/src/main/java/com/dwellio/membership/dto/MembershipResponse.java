@@ -11,6 +11,7 @@ public record MembershipResponse(
         String userFullName,
         UUID roleId,
         String roleName,
+        String userPhone,
         MembershipStatus status,
         Instant joinedAt
 ) {

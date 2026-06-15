@@ -50,4 +50,10 @@ public class JoinRequest extends BaseEntity {
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
+
+    @Column(name = "emergency_contact_name")
+    private String emergencyContactName;
+
+    @Column(name = "emergency_contact_phone", length = 50)
+    private String emergencyContactPhone;
 }

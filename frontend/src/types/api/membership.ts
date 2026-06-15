@@ -20,8 +20,17 @@ export interface OrgMembership {
   userId: string;
   userEmail: string;
   userFullName: string;
+  userPhone: string | null;
   roleId: string;
   roleName: string;
   status: MembershipStatus;
   joinedAt: string | null;
+}
+
+export interface OrganizationTeamMember {
+  fullName: string;
+  roleName: string;
+  email: string;
+  phone: string | null;
+  ownerRole: boolean;
 }

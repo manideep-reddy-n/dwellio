@@ -83,4 +83,10 @@ public class AuthorizationService {
 
         return new MembershipContext(membership, owner, permissions);
     }
+
+    @Transactional(readOnly = true)
+    public boolean isActiveMember(UUID organizationId) {
+        UserPrincipal principal = currentPrincipal();
+        return membershipRepository.existsActiveByUserIdAndOrganizationId(principal.getId(), organizationId);
+    }
 }

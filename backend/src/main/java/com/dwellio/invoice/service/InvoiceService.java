@@ -16,19 +16,11 @@ import com.dwellio.domain.enums.NotificationType;
 import com.dwellio.domain.enums.PaymentStatus;
 import com.dwellio.invoice.dto.InvoiceResponse;
 import com.dwellio.invoice.dto.InvoiceVerificationResponse;
+import com.dwellio.invoice.pdf.InvoicePdfRenderer;
 import com.dwellio.invoice.repository.InvoiceRepository;
 import com.dwellio.notification.service.NotificationService;
 import com.dwellio.payment.repository.PaymentRepository;
-import com.lowagie.text.Document;
-import com.lowagie.text.Font;
-import com.lowagie.text.FontFactory;
-import com.lowagie.text.Image;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.pdf.PdfWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -55,6 +47,7 @@ public class InvoiceService {
     private final AuthorizationService authorizationService;
     private final NotificationService notificationService;
     private final MediaStorageService mediaStorage;
+    private final InvoicePdfRenderer invoicePdfRenderer;
     private final Clock clock;
 
     @Value("${dwellio.app.public-url:http://localhost:3000}")
@@ -88,7 +81,7 @@ public class InvoiceService {
         invoice.setGeneratedBy(referenceUser(principal.getId()));
 
         try {
-            byte[] pdfBytes = renderPdfBytes(organization, payment, invoice);
+            byte[] pdfBytes = invoicePdfRenderer.render(organization, payment, invoice);
             MediaStorageService.StoredMedia stored = mediaStorage.storeRaw(
                     pdfBytes, "invoices", invoice.getId().toString() + ".pdf");
             invoice.setPdfPath(stored.url());
@@ -96,17 +89,21 @@ public class InvoiceService {
             throw new BadRequestException("Could not generate invoice PDF");
         }
 
-        Invoice saved = invoiceRepository.save(invoice);
+        Invoice saved = invoiceRepository.saveAndFlush(invoice);
         return toResponse(saved, true);
     }
 
     @Transactional
-    public InvoiceResponse share(UUID organizationId, UUID paymentId) {
+    public InvoiceResponse share(UUID organizationId, UUID paymentId, UserPrincipal principal) {
         authorizationService.requirePermission(organizationId, "payment:manage");
-        Invoice invoice = invoiceRepository.findActiveByPaymentId(paymentId)
-                .orElseThrow(() -> new NotFoundException("Invoice not found"));
+        Invoice invoice = invoiceRepository.findActiveByPaymentId(paymentId).orElse(null);
+        if (invoice == null) {
+            generate(organizationId, paymentId, principal);
+            invoice = invoiceRepository.findActiveByPaymentId(paymentId)
+                    .orElseThrow(() -> new NotFoundException("Invoice not found"));
+        }
 
-        if (invoice.getOrganization().getId() != organizationId) {
+        if (!organizationId.equals(invoice.getOrganization().getId())) {
             throw new NotFoundException("Invoice not found");
         }
         if (invoice.getStatus() == InvoiceStatus.REVOKED) {
@@ -119,7 +116,7 @@ public class InvoiceService {
 
         invoice.setStatus(InvoiceStatus.SHARED);
         invoice.setSharedAt(Instant.now(clock));
-        Invoice saved = invoiceRepository.save(invoice);
+        Invoice saved = invoiceRepository.saveAndFlush(invoice);
 
         Payment payment = invoice.getPayment();
         String slug = invoice.getOrganization().getSlug();
@@ -221,62 +218,6 @@ public class InvoiceService {
         return invoiceRepository.findActiveByPaymentId(paymentId)
                 .map(i -> toResponse(i, false))
                 .orElse(null);
-    }
-
-    private byte[] renderPdfBytes(Organization org, Payment payment, Invoice invoice) throws IOException {
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document document = new Document();
-            PdfWriter.getInstance(document, out);
-            document.open();
-
-            if (org.getLogoUrl() != null && org.getLogoUrl().startsWith("http")) {
-                try (InputStream logoStream = URI.create(org.getLogoUrl()).toURL().openStream()) {
-                    Image logo = Image.getInstance(logoStream.readAllBytes());
-                    logo.scaleToFit(80, 80);
-                    document.add(logo);
-                    document.add(new Paragraph(" "));
-                } catch (Exception ignored) {
-                    // Logo optional — skip if URL unreachable
-                }
-            }
-
-            Font title = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16);
-            Font body = FontFactory.getFont(FontFactory.HELVETICA, 11);
-            Font small = FontFactory.getFont(FontFactory.HELVETICA, 9);
-
-            document.add(new Paragraph(org.getName(), title));
-            if (org.getAddressLine() != null) {
-                document.add(new Paragraph(org.getAddressLine(), body));
-            }
-            document.add(new Paragraph(org.getCity() + (org.getArea() != null ? ", " + org.getArea() : ""), body));
-            document.add(new Paragraph(" "));
-            document.add(new Paragraph("INVOICE: " + invoice.getInvoiceNumber(), title));
-            document.add(new Paragraph(
-                    "Date: " + DateTimeFormatter.ISO_LOCAL_DATE.format(
-                            invoice.getGeneratedAt().atZone(clock.getZone()).toLocalDate()),
-                    body
-            ));
-            document.add(new Paragraph("Resident: " + payment.getMembership().getUser().getFullName(), body));
-            document.add(new Paragraph("Charge: " + payment.getChargeType().name(), body));
-            if (payment.getDescription() != null) {
-                document.add(new Paragraph("Description: " + payment.getDescription(), body));
-            }
-            document.add(new Paragraph(
-                    "Billing period: " + payment.getBillingMonth().getMonth() + " " + payment.getBillingMonth().getYear(),
-                    body
-            ));
-            document.add(new Paragraph("Amount due: ₹" + payment.getAmount(), body));
-            document.add(new Paragraph("Amount paid: ₹" + payment.getAmountPaid(), body));
-            document.add(new Paragraph("Status: " + payment.getStatus(), body));
-            document.add(new Paragraph(" "));
-            document.add(new Paragraph("Verify: " + publicAppUrl + "/verify-invoice?n="
-                    + invoice.getInvoiceNumber() + "&t=" + invoice.getVerificationToken(), small));
-            document.add(new Paragraph("Security ID: DWL-" + invoice.getVerificationHash().substring(0, 12).toUpperCase(), small));
-            document.add(new Paragraph(" "));
-            document.add(new Paragraph("System-generated receipt — not a tax invoice", small));
-            document.close();
-            return out.toByteArray();
-        }
     }
 
     private String buildInvoiceNumber(Organization organization) {

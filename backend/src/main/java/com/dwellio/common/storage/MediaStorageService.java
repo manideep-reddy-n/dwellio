@@ -11,9 +11,18 @@ public class MediaStorageService {
 
     private final CloudinaryMediaStorage cloudinary;
 
-    public StoredMedia storeImage(MultipartFile file, String folder, String localFilename) throws IOException {
+    public StoredMedia storeImage(MultipartFile file, String folder, String publicId) throws IOException {
+        CloudinaryMediaStorage.UploadResult uploaded = cloudinary.upload(file, folder, publicId);
+        return new StoredMedia(uploaded.url(), uploaded.publicId(), true);
+    }
+
+    public StoredMedia storeImageAutoNamed(MultipartFile file, String folder, String filename) throws IOException {
         CloudinaryMediaStorage.UploadResult uploaded = cloudinary.upload(file, folder);
         return new StoredMedia(uploaded.url(), uploaded.publicId(), true);
+    }
+
+    public void deleteImage(String secureUrl) {
+        cloudinary.deleteImage(secureUrl);
     }
 
     public StoredMedia storeRaw(byte[] data, String folder, String filename) throws IOException {

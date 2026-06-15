@@ -40,6 +40,7 @@ public class OrganizationLogoController {
             @RequestParam("file") MultipartFile file
     ) throws IOException {
         authorizationService.requirePermission(organizationId, "organization:update");
+        var organization = accommodationGuard.requireOrganization(organizationId);
         if (file.isEmpty() || file.getSize() > 2 * 1024 * 1024) {
             throw new BadRequestException("Logo must be under 2MB");
         }
@@ -48,14 +49,12 @@ public class OrganizationLogoController {
             throw new BadRequestException("Logo must be JPG, PNG, or WEBP");
         }
 
-        String ext = switch (contentType.toLowerCase()) {
-            case "image/png" -> "png";
-            case "image/webp" -> "webp";
-            default -> "jpg";
-        };
+        if (organization.getLogoUrl() != null && organization.getLogoUrl().startsWith("http")) {
+            mediaStorage.deleteImage(organization.getLogoUrl());
+        }
 
-        String filename = organizationId + "." + ext;
-        var stored = mediaStorage.storeImage(file, "logos", filename);
+        String publicId = organizationId.toString();
+        var stored = mediaStorage.storeImage(file, "logos", publicId);
         return organizationService.updateLogoUrl(organizationId, stored.url());
     }
 

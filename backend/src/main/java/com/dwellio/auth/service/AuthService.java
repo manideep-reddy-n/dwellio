@@ -5,6 +5,7 @@ import com.dwellio.auth.dto.AdminLoginRequest;
 import com.dwellio.auth.dto.AuthResponse;
 import com.dwellio.auth.dto.LoginRequest;
 import com.dwellio.auth.dto.RegisterRequest;
+import com.dwellio.auth.dto.UpdateProfileRequest;
 import com.dwellio.auth.dto.UserResponse;
 import com.dwellio.auth.repository.RefreshTokenRepository;
 import com.dwellio.auth.repository.UserRepository;
@@ -114,6 +115,15 @@ public class AuthService {
         User user = userRepository.findActiveById(principal.getId())
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
         return toUserResponse(user);
+    }
+
+    @Transactional
+    public UserResponse updateProfile(UserPrincipal principal, UpdateProfileRequest request) {
+        User user = userRepository.findActiveById(principal.getId())
+                .orElseThrow(() -> new UnauthorizedException("User not found"));
+        user.setFullName(request.fullName().trim());
+        user.setPhone(request.phone().trim());
+        return toUserResponse(userRepository.save(user));
     }
 
     private AuthResponse issueTokens(User user) {

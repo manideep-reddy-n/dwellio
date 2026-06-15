@@ -78,10 +78,12 @@ export function NotificationBell() {
                 key={notification.id}
                 className="flex cursor-pointer flex-col items-start gap-0.5 py-2"
                 onClick={() => {
-                  if (notification.status === "UNREAD") {
-                    markRead.mutate(notification.id);
-                  }
-                  router.push(href ?? "/app/notifications");
+                  void (async () => {
+                    if (notification.status === "UNREAD") {
+                      await markRead.mutateAsync(notification.id);
+                    }
+                    router.push(href ?? "/app/notifications");
+                  })();
                 }}
               >
                 <div className="flex w-full items-start justify-between gap-2">

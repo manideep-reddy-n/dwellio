@@ -3,11 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { joinRequestApi } from "@/lib/api/join-requests";
+import { joinRequestsApi } from "@/lib/api/join-requests";
 import { ApiError } from "@/lib/api/client";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
 interface JoinRequestFormProps {
@@ -22,23 +23,33 @@ export function JoinRequestForm({
   slug,
 }: JoinRequestFormProps) {
   const router = useRouter();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { user, isAuthenticated } = useAuth();
   const [message, setMessage] = useState("");
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (!isAuthenticated()) {
+    if (!isAuthenticated) {
       router.push(`/login?next=${encodeURIComponent(`/${slug}/join`)}`);
+      return;
+    }
+
+    if (!user?.phone?.trim()) {
+      toast.error("Add your phone number in account settings before joining a property.");
+      router.push(`/app/profile?next=${encodeURIComponent(`/${slug}/join`)}`);
       return;
     }
 
     setLoading(true);
     try {
-      await joinRequestApi.submit(organizationId, {
+      await joinRequestsApi.submit(organizationId, {
         message: message.trim() || undefined,
+        emergencyContactName: emergencyName.trim() || undefined,
+        emergencyContactPhone: emergencyPhone.trim() || undefined,
       });
       setSubmitted(true);
       toast.success("Join request submitted", {
@@ -65,6 +76,25 @@ export function JoinRequestForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
+        <Label htmlFor="emergencyName">Emergency contact name (optional)</Label>
+        <Input
+          id="emergencyName"
+          placeholder="Parent, spouse, or guardian"
+          value={emergencyName}
+          onChange={(e) => setEmergencyName(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="emergencyPhone">Emergency contact phone (optional)</Label>
+        <Input
+          id="emergencyPhone"
+          type="tel"
+          placeholder="+91 98765 43210"
+          value={emergencyPhone}
+          onChange={(e) => setEmergencyPhone(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="message">Message to the property (optional)</Label>
         <Textarea
           id="message"
@@ -76,7 +106,7 @@ export function JoinRequestForm({
         />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Submitting…" : isAuthenticated() ? "Submit join request" : "Sign in to join"}
+        {loading ? "Submitting…" : isAuthenticated ? "Submit join request" : "Sign in to join"}
       </Button>
     </form>
   );

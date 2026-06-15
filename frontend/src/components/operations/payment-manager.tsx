@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { countByField, StatusFilterTabs } from "@/components/shared/status-filter-tabs";
 import { useResidents } from "@/hooks/use-residents";
 import {
   useCreateManualCharge,
@@ -40,6 +41,22 @@ const CHARGE_TYPES: ChargeType[] = [
   "OTHER",
 ];
 
+const PAYMENT_FILTERS: Array<PaymentStatus | "ALL"> = [
+  "ALL",
+  "PAID",
+  "PENDING",
+  "PARTIAL",
+  "OVERDUE",
+];
+
+const PAYMENT_FILTER_LABELS: Record<PaymentStatus | "ALL", string> = {
+  ALL: "All",
+  PAID: "Paid",
+  PENDING: "Pending",
+  PARTIAL: "Partial",
+  OVERDUE: "Overdue",
+};
+
 interface PaymentManagerProps {
   orgId: string;
 }
@@ -61,6 +78,25 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
   const [manualDescription, setManualDescription] = useState("");
   const [manualDueDate, setManualDueDate] = useState("");
   const [selectedResidents, setSelectedResidents] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<PaymentStatus | "ALL">("ALL");
+
+  const filteredPayments = useMemo(
+    () =>
+      statusFilter === "ALL"
+        ? payments
+        : payments.filter((payment) => payment.status === statusFilter),
+    [payments, statusFilter],
+  );
+
+  const paymentFilterOptions = useMemo(
+    () =>
+      PAYMENT_FILTERS.map((value) => ({
+        value,
+        label: PAYMENT_FILTER_LABELS[value],
+        count: countByField(payments, "status", value),
+      })),
+    [payments],
+  );
 
   function startEdit(payment: PaymentRecord) {
     setEditingId(payment.id);
@@ -70,8 +106,12 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
 
   async function save(payment: PaymentRecord) {
     const paid = Number(amountPaid);
-    if (Number.isNaN(paid) || paid < 0 || paid > payment.amount) {
+    if (Number.isNaN(paid) || paid < 0) {
       toast.error("Enter a valid paid amount");
+      return;
+    }
+    if (paid > payment.amount) {
+      toast.error(`Paid amount cannot exceed ₹${payment.amount}`);
       return;
     }
     let status: PaymentStatus = "PENDING";
@@ -86,8 +126,8 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
       });
       toast.success("Payment updated");
       setEditingId(null);
-    } catch {
-      toast.error("Could not update payment");
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "Could not update payment");
     }
   }
 
@@ -141,6 +181,9 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
 
   async function handleShareInvoice(payment: PaymentRecord) {
     try {
+      if (!payment.invoiceId) {
+        await generateInvoice.mutateAsync(payment.id);
+      }
       await shareInvoice.mutateAsync(payment.id);
       toast.success("Invoice shared with resident");
     } catch (error) {
@@ -154,7 +197,6 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
       await paymentsApi.downloadInvoice(orgId, payment.id, `${payment.invoiceNumber}.pdf`);
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Could not download invoice");
-      toast.error("Could not download invoice");
     }
   }
 
@@ -170,6 +212,14 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
           {showManual ? "Cancel" : "Add manual charge"}
         </Button>
       </div>
+
+      {payments.length > 0 && (
+        <StatusFilterTabs
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={paymentFilterOptions}
+        />
+      )}
 
       {showManual && (
         <Card>
@@ -240,7 +290,14 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
         </p>
       )}
 
-      {payments.map((payment) => (
+      {payments.length > 0 && filteredPayments.length === 0 && (
+        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          No {statusFilter === "ALL" ? "" : PAYMENT_FILTER_LABELS[statusFilter].toLowerCase() + " "}
+          payments in this view.
+        </p>
+      )}
+
+      {filteredPayments.map((payment) => (
         <div key={payment.id} className={cn("rounded-xl border p-4", statusStyles[payment.status])}>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
@@ -256,6 +313,9 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
           </div>
           <p className="mt-2 text-sm">
             ₹{payment.amountPaid} / ₹{payment.amount}
+            {payment.amountPaid > payment.amount && (
+              <span className="ml-2 text-xs text-destructive">Paid exceeds due</span>
+            )}
           </p>
 
           {(payment.status === "PAID" || payment.status === "PARTIAL") && (
@@ -301,15 +361,31 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
           {editingId === payment.id ? (
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <div>
-                <Label>Paid amount</Label>
-                <Input value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} />
+                <Label>Paid amount (max ₹{payment.amount})</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={payment.amount}
+                  step="0.01"
+                  value={amountPaid}
+                  onChange={(e) => setAmountPaid(e.target.value)}
+                />
               </div>
               <div>
                 <Label>Notes</Label>
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
               </div>
               <div className="flex gap-2 sm:col-span-2">
-                <Button size="sm" disabled={record.isPending} onClick={() => void save(payment)}>
+                <Button
+                  size="sm"
+                  disabled={
+                    record.isPending ||
+                    Number.isNaN(Number(amountPaid)) ||
+                    Number(amountPaid) < 0 ||
+                    Number(amountPaid) > payment.amount
+                  }
+                  onClick={() => void save(payment)}
+                >
                   Save
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>

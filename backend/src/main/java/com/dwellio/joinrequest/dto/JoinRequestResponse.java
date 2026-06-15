@@ -9,8 +9,11 @@ public record JoinRequestResponse(
         UUID userId,
         String userEmail,
         String userFullName,
+        String userPhone,
         JoinRequestStatus status,
         String message,
+        String emergencyContactName,
+        String emergencyContactPhone,
         Instant createdAt,
         Instant reviewedAt,
         String rejectionReason

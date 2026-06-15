@@ -60,9 +60,22 @@ public class RoleService {
 
     @Transactional
     public RoleResponse updateRole(UUID organizationId, UUID roleId, UpdateRoleRequest request) {
-        Role role = getCustomRole(organizationId, roleId);
+        Role role = roleRepository.findActiveByIdAndOrganizationId(roleId, organizationId)
+                .orElseThrow(() -> new NotFoundException("Role not found"));
+
+        if (role.isOwnerRole()) {
+            throw new BadRequestException("Owner role cannot be modified");
+        }
+
+        boolean residentRole = RoleConstants.RESIDENT.equalsIgnoreCase(role.getName());
+        if (role.isSystem() && !residentRole) {
+            throw new BadRequestException("System roles cannot be modified");
+        }
 
         if (request.name() != null) {
+            if (role.isSystem()) {
+                throw new BadRequestException("System role name cannot be changed");
+            }
             validateCustomRoleName(request.name());
             if (!role.getName().equalsIgnoreCase(request.name())
                     && roleRepository.findActiveByOrganizationIdAndName(organizationId, request.name()).isPresent()) {
@@ -80,7 +93,11 @@ public class RoleService {
 
     @Transactional
     public void deleteRole(UUID organizationId, UUID roleId) {
-        Role role = getCustomRole(organizationId, roleId);
+        Role role = roleRepository.findActiveByIdAndOrganizationId(roleId, organizationId)
+                .orElseThrow(() -> new NotFoundException("Role not found"));
+        if (role.isSystem()) {
+            throw new BadRequestException("System roles cannot be deleted");
+        }
         role.setDeletedAt(java.time.Instant.now());
         roleRepository.save(role);
     }

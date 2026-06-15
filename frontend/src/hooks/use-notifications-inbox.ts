@@ -1,6 +1,6 @@
 "use client";
 
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { notificationsApi } from "@/lib/api/notifications";
 import { queryKeys } from "@/lib/query/keys";
 import { queryDefaults } from "@/lib/query/defaults";
@@ -26,6 +26,13 @@ export function useNotificationInbox(params: Omit<NotificationListParams, "page"
   });
 }
 
+const NOTIFICATIONS_ROOT = [...queryKeys.all, "notifications"] as const;
+
+function invalidateAllNotificationQueries(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_ROOT });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
+}
+
 export function useMarkNotificationRead() {
   const queryClient = useQueryClient();
   const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
@@ -34,16 +41,16 @@ export function useMarkNotificationRead() {
   return useMutation({
     mutationFn: (notificationId: string) => notificationsApi.markRead(notificationId),
     onMutate: async (notificationId) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.notifications.inbox() });
+      await queryClient.cancelQueries({ queryKey: NOTIFICATIONS_ROOT });
 
       const previousPages = queryClient.getQueriesData<{ pages: PagedNotifications[] }>({
-        queryKey: queryKeys.notifications.inbox(),
+        queryKey: NOTIFICATIONS_ROOT,
       });
 
       queryClient.setQueriesData<{ pages: PagedNotifications[]; pageParams: unknown[] }>(
-        { queryKey: queryKeys.notifications.inbox() },
+        { queryKey: NOTIFICATIONS_ROOT },
         (old) => {
-          if (!old) return old;
+          if (!old?.pages || !Array.isArray(old.pages)) return old;
           return {
             ...old,
             pages: old.pages.map((page) => ({
@@ -58,11 +65,28 @@ export function useMarkNotificationRead() {
         },
       );
 
+      queryClient.setQueriesData<PagedNotifications>(
+        { queryKey: [...queryKeys.notifications.inbox(), "preview"] },
+        (old) => {
+          if (!old?.content) return old;
+          return {
+            ...old,
+            content: old.content.map((n) =>
+              n.id === notificationId
+                ? { ...n, status: "READ" as const, readAt: new Date().toISOString() }
+                : n,
+            ),
+          };
+        },
+      );
+
       const wasUnread = previousPages.some(([, data]) =>
-        data?.pages.some((p) =>
+        data?.pages?.some((p) =>
           p.content.some((n) => n.id === notificationId && n.status === "UNREAD"),
         ),
-      );
+      ) || queryClient
+        .getQueryData<PagedNotifications>([...queryKeys.notifications.inbox(), "preview"])
+        ?.content.some((n) => n.id === notificationId && n.status === "UNREAD");
 
       if (wasUnread) {
         setUnreadCount(Math.max(0, unreadCount - 1));
@@ -74,15 +98,13 @@ export function useMarkNotificationRead() {
       context?.previousPages.forEach(([key, data]) => {
         queryClient.setQueryData(key, data);
       });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
+      invalidateAllNotificationQueries(queryClient);
     },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
+    onSuccess: () => {
+      invalidateAllNotificationQueries(queryClient);
     },
   });
 }
-
-const NOTIFICATIONS_ROOT = [...queryKeys.all, "notifications"] as const;
 
 export function useMarkAllNotificationsRead() {
   const queryClient = useQueryClient();

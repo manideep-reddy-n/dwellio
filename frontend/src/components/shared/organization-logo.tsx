@@ -30,7 +30,7 @@ export function OrganizationLogo({
         src={src}
         alt=""
         className={cn(
-          "shrink-0 rounded-md border bg-background object-cover",
+          "shrink-0 rounded-md border bg-background object-contain p-0.5",
           sizeClasses[size],
           className,
         )}

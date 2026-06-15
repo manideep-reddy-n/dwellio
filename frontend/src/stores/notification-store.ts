@@ -15,6 +15,7 @@ interface NotificationState {
   toasts: ToastNotification[];
   setUnreadCount: (count: number) => void;
   incrementUnread: () => void;
+  decrementUnread: () => void;
   pushToast: (toast: ToastNotification) => void;
   dismissToast: (id: string) => void;
 }
@@ -26,6 +27,8 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   setUnreadCount: (count) => set({ unreadCount: count }),
 
   incrementUnread: () => set((s) => ({ unreadCount: s.unreadCount + 1 })),
+
+  decrementUnread: () => set((s) => ({ unreadCount: Math.max(0, s.unreadCount - 1) })),
 
   pushToast: (toast) =>
     set((s) => ({

@@ -85,7 +85,7 @@ export function NotificationInbox({
             <NotificationRow
               key={notification.id}
               notification={notification}
-              onMarkRead={(id) => markRead.mutate(id)}
+              onMarkRead={(id) => markRead.mutateAsync(id)}
               isMarking={markRead.isPending && markRead.variables === notification.id}
             />
           ))}

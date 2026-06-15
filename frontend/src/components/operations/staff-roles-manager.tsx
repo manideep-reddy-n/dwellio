@@ -224,7 +224,7 @@ export function StaffRolesManager({ orgId, isLoading, isError, onRetry }: StaffR
               onEdit={() => openEditRole(role)}
               onDelete={() => {
                 if (role.system || role.ownerRole) {
-                  toast.error("System roles cannot be deleted");
+                  toast.error("This role cannot be deleted");
                   return;
                 }
                 remove.mutate(role.id);
@@ -246,6 +246,10 @@ function RoleCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const isResidentRole = role.name === "RESIDENT";
+  const canEdit = !role.ownerRole && (!role.system || isResidentRole);
+  const canDelete = !role.system && !role.ownerRole;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
@@ -254,25 +258,24 @@ function RoleCard({
       </CardHeader>
       <CardContent className="space-y-2 pt-0">
         <div className="flex flex-wrap gap-1">
-          {role.permissions.slice(0, 6).map((p) => (
+          {role.permissions.map((p) => (
             <Badge key={p} variant="outline" className="text-[10px]">
-              {permissionLabels[p] ?? p}
+              {p === "*" ? "All permissions" : (permissionLabels[p] ?? p)}
             </Badge>
           ))}
-          {role.permissions.length > 6 && (
-            <Badge variant="outline" className="text-[10px]">
-              +{role.permissions.length - 6}
-            </Badge>
-          )}
         </div>
-        {!role.system && !role.ownerRole && (
+        {(canEdit || canDelete) && (
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={onEdit}>
-              Edit
-            </Button>
-            <Button size="sm" variant="outline" onClick={onDelete}>
-              Delete
-            </Button>
+            {canEdit && (
+              <Button size="sm" variant="outline" onClick={onEdit}>
+                Edit
+              </Button>
+            )}
+            {canDelete && (
+              <Button size="sm" variant="outline" onClick={onDelete}>
+                Delete
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

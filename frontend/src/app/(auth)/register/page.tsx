@@ -38,6 +38,7 @@ export default function RegisterPage() {
   const [intent, setIntent] = useState<AccountIntent>("resident");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,7 +48,7 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      await register({ fullName, email, password });
+      await register({ fullName, email, phone: phone.trim(), password });
       const destination = intent === "owner" ? "/app/organizations/new" : "/explore";
       window.location.assign(destination);
     } catch (err) {
@@ -106,6 +107,18 @@ export default function RegisterPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone number</Label>
+            <Input
+              id="phone"
+              type="tel"
+              autoComplete="tel"
+              required
+              placeholder="+91 98765 43210"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
           </div>
           <div className="space-y-2">

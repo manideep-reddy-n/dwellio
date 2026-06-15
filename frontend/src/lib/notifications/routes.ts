@@ -63,6 +63,7 @@ function getNotificationHrefByType(
     case "REVIEW_REPORTED":
       return orgSlug ? `/app/${orgSlug}/operations/reviews` : null;
     case "PAYMENT_DUE":
+    case "PAYMENT_RECORDED":
     case "INVOICE_SHARED":
       return orgSlug ? `/app/${orgSlug}/resident/payments` : "/app/profile";
     case "FOOD_MENU_UPDATED":

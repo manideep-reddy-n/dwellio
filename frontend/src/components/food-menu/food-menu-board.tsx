@@ -94,13 +94,12 @@ export function FoodMenuBoard({ orgId }: FoodMenuBoardProps) {
 
   const saveToday = useMutation({
     mutationFn: async () => {
-      await Promise.all(
-        MEALS.map((meal) =>
-          foodMenuApi.updateToday(orgId, {
-            mealType: meal,
-            items: draft[meal] ?? "",
-          }),
-        ),
+      await foodMenuApi.updateTodayBatch(
+        orgId,
+        MEALS.map((meal) => ({
+          mealType: meal,
+          items: draft[meal] ?? "",
+        })),
       );
     },
     onSuccess: () => {

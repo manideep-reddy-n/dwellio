@@ -64,6 +64,8 @@ public class JoinRequestService {
         joinRequest.setOrganization(organization);
         joinRequest.setStatus(JoinRequestStatus.PENDING);
         joinRequest.setMessage(request.message());
+        joinRequest.setEmergencyContactName(trimToNull(request.emergencyContactName()));
+        joinRequest.setEmergencyContactPhone(trimToNull(request.emergencyContactPhone()));
         joinRequestRepository.save(joinRequest);
 
         afterCommitEventPublisher.publish(new JoinRequestSubmittedEvent(
@@ -111,6 +113,8 @@ public class JoinRequestService {
         ResidentProfile profile = new ResidentProfile();
         profile.setId(UUID.randomUUID());
         profile.setMembership(membership);
+        profile.setEmergencyContactName(joinRequest.getEmergencyContactName());
+        profile.setEmergencyContactPhone(joinRequest.getEmergencyContactPhone());
         profile.setStatus(ResidentStatus.ACTIVE);
         residentProfileRepository.save(profile);
 
@@ -189,11 +193,22 @@ public class JoinRequestService {
                 joinRequest.getUser().getId(),
                 joinRequest.getUser().getEmail(),
                 joinRequest.getUser().getFullName(),
+                joinRequest.getUser().getPhone(),
                 joinRequest.getStatus(),
                 joinRequest.getMessage(),
+                joinRequest.getEmergencyContactName(),
+                joinRequest.getEmergencyContactPhone(),
                 joinRequest.getCreatedAt(),
                 joinRequest.getReviewedAt(),
                 joinRequest.getRejectionReason()
         );
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

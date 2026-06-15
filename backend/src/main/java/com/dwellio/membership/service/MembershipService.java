@@ -11,6 +11,7 @@ import com.dwellio.domain.entity.User;
 import com.dwellio.domain.enums.MembershipStatus;
 import com.dwellio.domain.enums.StaffInvitationStatus;
 import com.dwellio.membership.dto.MembershipResponse;
+import com.dwellio.membership.dto.OrganizationTeamMemberResponse;
 import com.dwellio.membership.dto.StaffInviteRequest;
 import com.dwellio.membership.dto.StaffInviteResponse;
 import com.dwellio.membership.repository.MembershipRepository;
@@ -34,6 +35,20 @@ public class MembershipService {
     private final OrganizationService organizationService;
     private final RoleService roleService;
     private final Clock clock;
+
+    @Transactional(readOnly = true)
+    public List<OrganizationTeamMemberResponse> listTeamContacts(UUID organizationId) {
+        organizationService.findActiveOrganization(organizationId);
+        return membershipRepository.findActiveTeamByOrganizationId(organizationId).stream()
+                .map(m -> new OrganizationTeamMemberResponse(
+                        m.getUser().getFullName(),
+                        m.getRole().getName(),
+                        m.getUser().getEmail(),
+                        m.getUser().getPhone(),
+                        m.getRole().isOwnerRole()
+                ))
+                .toList();
+    }
 
     @Transactional(readOnly = true)
     public List<MembershipResponse> listMemberships(UUID organizationId) {
@@ -123,6 +138,7 @@ public class MembershipService {
                 membership.getUser().getFullName(),
                 membership.getRole().getId(),
                 membership.getRole().getName(),
+                membership.getUser().getPhone(),
                 membership.getStatus(),
                 membership.getJoinedAt()
         );

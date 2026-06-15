@@ -12,6 +12,7 @@ import {
 } from "@/lib/websocket/stomp-client";
 import { invalidateFromNotification } from "@/lib/websocket/invalidation-router";
 import { getNotificationHrefFromPayload } from "@/lib/notifications/routes";
+import { notificationsApi } from "@/lib/api/notifications";
 import { useAuthStore } from "@/stores/auth-store";
 import { useOrgStore } from "@/stores/org-store";
 import { useWebSocketStore } from "@/stores/websocket-store";
@@ -39,6 +40,7 @@ export function StompProvider({ children }: { children: React.ReactNode }) {
   const setStatus = useWebSocketStore((s) => s.setStatus);
   const setSubscribedOrgId = useWebSocketStore((s) => s.setSubscribedOrgId);
   const incrementUnread = useNotificationStore((s) => s.incrementUnread);
+  const decrementUnread = useNotificationStore((s) => s.decrementUnread);
 
   useEffect(() => {
     if (isAdminRoute || !accessToken || !sessionReady) {
@@ -64,14 +66,30 @@ export function StompProvider({ children }: { children: React.ReactNode }) {
               payload.organizationId,
             );
             const href = getNotificationHrefFromPayload(payload.type, payload.payloadJson);
+            const markReadAndGo = () => {
+              void notificationsApi.markRead(payload.id).then(() => {
+                decrementUnread();
+                void queryClient.invalidateQueries({ queryKey: ["dwellio", "notifications"] });
+              });
+              router.push(href ?? "/app/notifications");
+            };
+            const markReadOnly = () => {
+              void notificationsApi.markRead(payload.id).then(() => {
+                decrementUnread();
+                void queryClient.invalidateQueries({ queryKey: ["dwellio", "notifications"] });
+              });
+            };
             toast(payload.title, {
               description: payload.body,
               action: href
                 ? {
                     label: "View",
-                    onClick: () => router.push(href),
+                    onClick: markReadAndGo,
                   }
-                : undefined,
+                : {
+                    label: "Mark read",
+                    onClick: markReadOnly,
+                  },
             });
           } catch (error) {
             console.error("Failed to handle notification", error);
@@ -117,7 +135,7 @@ export function StompProvider({ children }: { children: React.ReactNode }) {
       setStatus("idle");
       setSubscribedOrgId(null);
     };
-  }, [isAdminRoute, accessToken, sessionReady, activeOrgId, queryClient, incrementUnread, setStatus, setSubscribedOrgId, router]);
+  }, [isAdminRoute, accessToken, sessionReady, activeOrgId, queryClient, incrementUnread, decrementUnread, setStatus, setSubscribedOrgId, router]);
 
   return <>{children}</>;
 }

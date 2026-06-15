@@ -126,7 +126,7 @@ public class OrganizationVerificationService {
 
         String ext = extension(file.getContentType());
         String filename = UUID.randomUUID() + "." + ext;
-        MediaStorageService.StoredMedia stored = mediaStorage.storeImage(file, "verification-docs", filename);
+        MediaStorageService.StoredMedia stored = mediaStorage.storeImageAutoNamed(file, "verification-docs", filename);
 
         OrganizationVerificationDocument document = new OrganizationVerificationDocument();
         document.setId(UUID.randomUUID());

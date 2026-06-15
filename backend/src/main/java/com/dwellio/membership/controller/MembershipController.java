@@ -2,6 +2,7 @@ package com.dwellio.membership.controller;
 
 import com.dwellio.auth.security.UserPrincipal;
 import com.dwellio.membership.dto.MembershipResponse;
+import com.dwellio.membership.dto.OrganizationTeamMemberResponse;
 import com.dwellio.membership.dto.StaffInviteRequest;
 import com.dwellio.membership.dto.StaffInviteResponse;
 import com.dwellio.membership.service.MembershipService;
@@ -31,6 +32,12 @@ public class MembershipController {
     @PreAuthorize("@authz.hasPermission(#organizationId, 'resident:read')")
     public List<MembershipResponse> listMemberships(@PathVariable UUID organizationId) {
         return membershipService.listMemberships(organizationId);
+    }
+
+    @GetMapping("/team")
+    @PreAuthorize("@authz.isActiveMember(#organizationId)")
+    public List<OrganizationTeamMemberResponse> listTeam(@PathVariable UUID organizationId) {
+        return membershipService.listTeamContacts(organizationId);
     }
 
     @PostMapping("/staff/invite")

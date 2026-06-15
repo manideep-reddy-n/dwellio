@@ -78,4 +78,11 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
             @Param("paymentId") String paymentId,
             @Param("since") Instant since
     );
+
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            DELETE FROM Notification n
+            WHERE n.createdAt < :cutoff
+            """)
+    int deleteOlderThan(@Param("cutoff") Instant cutoff);
 }

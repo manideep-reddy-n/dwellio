@@ -16,6 +16,9 @@ export const permissionLabels: Record<string, string> = {
   "organization:update": "Update organization settings",
   "review:create": "Create reviews",
   "review:update_own": "Update own review",
+  "payment:read_own": "View own payments",
+  "allocation:read_own": "View own room allocation",
+  "notification:read": "Receive notifications",
   "asset:manage": "Manage assets",
 };
 

@@ -90,6 +90,8 @@ public class PaymentService {
                 .map(membershipId -> createManualCharge(organization, request, membershipId, today))
                 .toList();
 
+        created.forEach(payment -> notifyPaymentCreated(organization, payment));
+
         return created.stream().map(this::toResponse).toList();
     }
 
@@ -104,18 +106,22 @@ public class PaymentService {
         Payment payment = paymentRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(paymentId, organizationId)
                 .orElseThrow(() -> new NotFoundException("Payment not found"));
 
-        BigDecimal amountPaid = request.amountPaid() != null ? request.amountPaid() : BigDecimal.ZERO;
-        if (amountPaid.compareTo(payment.getAmount()) > 0) {
+        BigDecimal dueAmount = payment.getAmount().setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal amountPaid = (request.amountPaid() != null ? request.amountPaid() : BigDecimal.ZERO)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
+        if (amountPaid.compareTo(dueAmount) > 0) {
             throw new BadRequestException("Paid amount cannot exceed due amount");
         }
 
         payment.setAmountPaid(amountPaid);
-        payment.setStatus(resolveStatus(payment.getAmount(), amountPaid, request.status()));
+        payment.setStatus(resolveStatus(dueAmount, amountPaid, request.status()));
         payment.setNotes(request.notes());
         payment.setPaidAt(payment.getStatus() == PaymentStatus.PAID ? Instant.now(clock) : null);
         payment.setRecordedBy(referenceUser(principal.getId()));
 
-        return toResponse(paymentRepository.save(payment));
+        Payment saved = paymentRepository.save(payment);
+        notifyPaymentRecorded(organizationId, saved);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -195,7 +201,8 @@ public class PaymentService {
                 payment.setChargeType(ChargeType.RENT);
                 payment.setDescription("Monthly rent");
                 payment.setStatus(dueDate.isBefore(today) ? PaymentStatus.OVERDUE : PaymentStatus.PENDING);
-                paymentRepository.save(payment);
+                Payment saved = paymentRepository.save(payment);
+                notifyPaymentCreated(organization, saved);
             }
 
             refreshStatuses(organization, membership, today);
@@ -248,7 +255,7 @@ public class PaymentService {
     }
 
     private PaymentStatus resolveStatus(BigDecimal due, BigDecimal paid, PaymentStatus requested) {
-        if (paid.compareTo(due) >= 0 || requested == PaymentStatus.PAID) {
+        if (paid.compareTo(due) >= 0) {
             return PaymentStatus.PAID;
         }
         if (paid.signum() > 0) {
@@ -258,6 +265,44 @@ public class PaymentService {
             return PaymentStatus.OVERDUE;
         }
         return PaymentStatus.PENDING;
+    }
+
+    private void notifyPaymentCreated(Organization organization, Payment payment) {
+        if (notificationRepository.existsRecentForPayment(
+                payment.getMembership().getUser().getId(),
+                organization.getId(),
+                NotificationType.PAYMENT_DUE.name(),
+                payment.getId().toString(),
+                Instant.now(clock).minus(1, ChronoUnit.HOURS)
+        )) {
+            return;
+        }
+        notifyPaymentDue(organization, payment);
+    }
+
+    private void notifyPaymentRecorded(UUID organizationId, Payment payment) {
+        Organization organization = accommodationGuard.requireOrganization(organizationId);
+        String slug = organization.getSlug();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("paymentId", payment.getId().toString());
+        payload.put("organizationSlug", slug);
+        payload.put("targetPath", "/app/" + slug + "/resident/payments");
+
+        String statusLabel = payment.getStatus() == PaymentStatus.PAID
+                ? "marked as paid"
+                : payment.getStatus() == PaymentStatus.PARTIAL
+                        ? "partially recorded"
+                        : "updated";
+
+        notificationService.create(
+                payment.getMembership().getUser().getId(),
+                organizationId,
+                NotificationType.PAYMENT_RECORDED,
+                "Payment " + statusLabel,
+                (payment.getDescription() != null ? payment.getDescription() : payment.getChargeType().name())
+                        + " — ₹" + payment.getAmountPaid() + " of ₹" + payment.getAmount() + " recorded.",
+                payload
+        );
     }
 
     private void notifyPaymentDue(Organization organization, Payment payment) {

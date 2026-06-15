@@ -1,0 +1,33 @@
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS chk_notification_type;
+
+ALTER TABLE notifications
+    ADD CONSTRAINT chk_notification_type CHECK (
+        type IN (
+            'JOIN_REQUEST_APPROVED',
+            'JOIN_REQUEST_REJECTED',
+            'JOIN_REQUEST_SUBMITTED',
+            'COMPLAINT_CREATED',
+            'COMPLAINT_ASSIGNED',
+            'COMPLAINT_RESOLVED',
+            'COMPLAINT_REOPENED',
+            'ANNOUNCEMENT_PUBLISHED',
+            'OCCUPANCY_ALLOCATED',
+            'OCCUPANCY_TRANSFERRED',
+            'REVIEW_REPORTED',
+            'AVAILABILITY_OPEN',
+            'PAYMENT_DUE',
+            'PAYMENT_RECORDED',
+            'INVOICE_SHARED',
+            'LEAVE_REQUEST_SUBMITTED',
+            'LEAVE_REQUEST_APPROVED',
+            'LEAVE_REQUEST_REJECTED',
+            'FOOD_MENU_UPDATED',
+            'ORGANIZATION_VERIFIED',
+            'ORGANIZATION_VERIFICATION_SUBMITTED',
+            'ORGANIZATION_VERIFICATION_REJECTED',
+            'ORGANIZATION_VERIFICATION_MORE_INFO',
+            'ORGANIZATION_SUSPENDED',
+            'SUSPENSION_APPEAL_SUBMITTED',
+            'SYSTEM'
+        )
+    );

@@ -21,6 +21,35 @@ public class CloudinaryMediaStorage {
         this.cloudinary = new Cloudinary(cloudinaryUrl);
     }
 
+    public UploadResult upload(MultipartFile file, String folder, String publicId) throws IOException {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap(
+                        "folder", "dwellio/" + folder,
+                        "resource_type", "image",
+                        "public_id", publicId,
+                        "overwrite", true
+                )
+        );
+        return new UploadResult(
+                (String) result.get("secure_url"),
+                (String) result.get("public_id")
+        );
+    }
+
+    public void deleteImage(String secureUrl) {
+        String publicId = extractPublicId(secureUrl);
+        if (publicId == null) {
+            return;
+        }
+        try {
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
+        } catch (Exception ignored) {
+            // Best-effort cleanup when replacing logos
+        }
+    }
+
     public UploadResult upload(MultipartFile file, String folder) throws IOException {
         @SuppressWarnings("unchecked")
         Map<String, Object> result = cloudinary.uploader().upload(

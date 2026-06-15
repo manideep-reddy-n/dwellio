@@ -80,9 +80,10 @@ public class PaymentController {
     @PreAuthorize("@authz.hasPermission(#organizationId, 'payment:manage')")
     public InvoiceResponse shareInvoice(
             @PathVariable UUID organizationId,
-            @PathVariable UUID paymentId
+            @PathVariable UUID paymentId,
+            @AuthenticationPrincipal UserPrincipal principal
     ) {
-        return invoiceService.share(organizationId, paymentId);
+        return invoiceService.share(organizationId, paymentId, principal);
     }
 
     @GetMapping("/{paymentId}/invoice/pdf")

@@ -113,6 +113,7 @@ public class NotificationService {
         if (notification.getStatus() == NotificationStatus.UNREAD) {
             notification.setStatus(NotificationStatus.READ);
             notification.setReadAt(Instant.now(clock));
+            notificationRepository.save(notification);
         }
 
         return NotificationResponse.from(notification);

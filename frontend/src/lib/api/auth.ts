@@ -6,6 +6,7 @@ import type {
   MessageResponse,
   RefreshTokenRequest,
   RegisterRequest,
+  UpdateProfileRequest,
   UserResponse,
 } from "@/types/api/auth";
 
@@ -37,6 +38,9 @@ export const authApi = {
     apiRequest<void>(base, "/auth/logout", { method: "POST" }),
 
   me: () => apiRequest<UserResponse>(base, "/auth/me"),
+
+  updateProfile: (body: UpdateProfileRequest) =>
+    apiRequest<UserResponse>(base, "/auth/me", { method: "PATCH", body }),
 
   forgotPassword: (email: string) =>
     apiRequest<MessageResponse>(base, "/auth/forgot-password", {
