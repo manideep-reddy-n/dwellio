@@ -7,7 +7,11 @@ import com.dwellio.accommodation.event.OccupancyTransferredEvent;
 import com.dwellio.accommodation.service.AccommodationGuard;
 import com.dwellio.accommodation.service.BlockStatusEvaluator;
 import com.dwellio.accommodation.service.SpaceStatusProjectionService;
+import com.dwellio.activity.ActivityEventTypes;
+import com.dwellio.activity.service.ActivityEventRecorder;
 import com.dwellio.bed.service.BedService;
+import com.dwellio.domain.enums.ActivityEventCategory;
+import com.dwellio.domain.enums.OccupancyClassification;
 import com.dwellio.common.exception.BadRequestException;
 import com.dwellio.common.exception.ConflictException;
 import com.dwellio.common.exception.NotFoundException;
@@ -29,7 +33,11 @@ import com.dwellio.occupancy.dto.UpdateOccupancyRentRequest;
 import com.dwellio.occupancy.repository.OccupancyRepository;
 import com.dwellio.space.service.SpaceService;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,6 +47,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OccupancyService {
 
+    private static final String SOURCE_OCCUPANCY = "OCCUPANCY";
+
     private final OccupancyRepository occupancyRepository;
     private final MembershipRepository membershipRepository;
     private final AuthorizationService authorizationService;
@@ -47,6 +57,7 @@ public class OccupancyService {
     private final SpaceService spaceService;
     private final SpaceStatusProjectionService statusProjectionService;
     private final AccommodationEventPublisher eventPublisher;
+    private final ActivityEventRecorder activityEventRecorder;
 
     @Transactional(readOnly = true)
     public List<OccupancyResponse> list(UUID organizationId, UUID membershipId) {
@@ -98,6 +109,8 @@ public class OccupancyService {
                 occupancy.getUnitSpace() != null ? occupancy.getUnitSpace().getId() : null
         ));
 
+        recordAllocated(organizationId, occupancy);
+
         return toResponse(occupancy);
     }
 
@@ -136,7 +149,8 @@ public class OccupancyService {
                     membership,
                     bedService.getActiveBed(organizationId, request.targetBedId()),
                     request.transferDate(),
-                    current.getMonthlyRent()
+                    current.getMonthlyRent(),
+                    current.getOccupancyClassification()
             );
         } else {
             if (request.targetUnitSpaceId() == null) {
@@ -149,7 +163,8 @@ public class OccupancyService {
                     organization,
                     membership,
                     spaceService.getActiveSpace(organizationId, request.targetUnitSpaceId()),
-                    request.transferDate()
+                    request.transferDate(),
+                    current.getOccupancyClassification()
             );
         }
 
@@ -164,6 +179,10 @@ public class OccupancyService {
                 previousUnitSpaceId,
                 newOccupancy.getUnitSpace() != null ? newOccupancy.getUnitSpace().getId() : null
         ));
+
+        recordReleased(organizationId, current, request.transferDate());
+        recordAllocated(organizationId, newOccupancy);
+        recordTransferred(organization, membership.getId(), newOccupancy);
 
         return toResponse(newOccupancy);
     }
@@ -204,6 +223,8 @@ public class OccupancyService {
                 unitSpaceId
         ));
 
+        recordReleased(organizationId, occupancy, request.moveOutDate());
+
         return toResponse(occupancy);
     }
 
@@ -219,6 +240,18 @@ public class OccupancyService {
         return toResponse(occupancyRepository.save(occupancy));
     }
 
+    @Transactional(readOnly = true)
+    public List<OccupancyResponse> listHistory(UUID organizationId, UUID membershipId) {
+        authorizationService.requirePermission(organizationId, "resident:manage");
+        return list(organizationId, membershipId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OccupancyResponse> listMyHistory(UUID organizationId) {
+        MembershipContext context = authorizationService.requirePermission(organizationId, "allocation:read_own");
+        return list(organizationId, context.getMembershipId());
+    }
+
     private Occupancy allocateBed(
             Organization organization,
             Membership membership,
@@ -232,7 +265,14 @@ public class OccupancyService {
             throw new BadRequestException("unitSpaceId is not used for bed-based allocation");
         }
         Bed bed = bedService.getActiveBed(organization.getId(), request.bedId());
-        return createBedOccupancy(organization, membership, bed, request.moveInDate(), request.monthlyRent());
+        return createBedOccupancy(
+                organization,
+                membership,
+                bed,
+                request.moveInDate(),
+                request.monthlyRent(),
+                request.occupancyClassification()
+        );
     }
 
     private Occupancy allocateUnit(
@@ -248,7 +288,13 @@ public class OccupancyService {
             throw new BadRequestException("bedId is not used for unit-based allocation");
         }
         Space unit = spaceService.getActiveSpace(organization.getId(), request.unitSpaceId());
-        return createUnitOccupancy(organization, membership, unit, request.moveInDate());
+        return createUnitOccupancy(
+                organization,
+                membership,
+                unit,
+                request.moveInDate(),
+                request.occupancyClassification()
+        );
     }
 
     private Occupancy createBedOccupancy(
@@ -256,7 +302,8 @@ public class OccupancyService {
             Membership membership,
             Bed bed,
             java.time.LocalDate moveInDate,
-            BigDecimal monthlyRent
+            BigDecimal monthlyRent,
+            OccupancyClassification classification
     ) {
         accommodationGuard.requireBedParentRoom(bed);
         validateAllocatableBed(bed);
@@ -269,6 +316,7 @@ public class OccupancyService {
         occupancy.setBed(bed);
         occupancy.setMoveInDate(moveInDate);
         occupancy.setMonthlyRent(resolveMonthlyRent(organization, monthlyRent));
+        occupancy.setOccupancyClassification(resolveClassification(organization, classification));
         occupancy.setCurrent(true);
         occupancy = occupancyRepository.save(occupancy);
 
@@ -280,7 +328,8 @@ public class OccupancyService {
             Organization organization,
             Membership membership,
             Space unit,
-            java.time.LocalDate moveInDate
+            java.time.LocalDate moveInDate,
+            OccupancyClassification classification
     ) {
         accommodationGuard.requireUnitSpace(unit);
         validateAllocatableUnit(unit);
@@ -292,6 +341,7 @@ public class OccupancyService {
         occupancy.setOccupancyTarget(OccupancyTarget.UNIT);
         occupancy.setUnitSpace(unit);
         occupancy.setMoveInDate(moveInDate);
+        occupancy.setOccupancyClassification(resolveClassification(organization, classification));
         occupancy.setCurrent(true);
         occupancy = occupancyRepository.save(occupancy);
 
@@ -335,6 +385,123 @@ public class OccupancyService {
         return BigDecimal.valueOf(8000);
     }
 
+    private static OccupancyClassification resolveClassification(
+            Organization organization,
+            OccupancyClassification requested
+    ) {
+        if (requested != null) {
+            return requested;
+        }
+        return organization.getType() == com.dwellio.domain.enums.OrganizationType.GATED_COMMUNITY
+                ? OccupancyClassification.TENANT_OCCUPIED
+                : OccupancyClassification.RESIDENT;
+    }
+
+    private void recordAllocated(UUID organizationId, Occupancy occupancy) {
+        activityEventRecorder.record(
+                organizationId,
+                occupancy.getMembership().getId(),
+                ActivityEventCategory.ACCOMMODATION,
+                ActivityEventTypes.OCCUPANCY_ALLOCATED,
+                "Occupancy allocated",
+                locationLabel(occupancy),
+                occupancyMetadata(occupancy),
+                occupancy.getMoveInDate().atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                SOURCE_OCCUPANCY,
+                occupancySourceId(occupancy.getId(), "ALLOCATED")
+        );
+    }
+
+    private void recordReleased(UUID organizationId, Occupancy occupancy, java.time.LocalDate moveOutDate) {
+        activityEventRecorder.record(
+                organizationId,
+                occupancy.getMembership().getId(),
+                ActivityEventCategory.ACCOMMODATION,
+                ActivityEventTypes.OCCUPANCY_RELEASED,
+                "Occupancy released",
+                locationLabel(occupancy),
+                occupancyMetadata(occupancy),
+                moveOutDate.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                SOURCE_OCCUPANCY,
+                occupancySourceId(occupancy.getId(), "RELEASED")
+        );
+    }
+
+    private void recordTransferred(Organization organization, UUID membershipId, Occupancy newOccupancy) {
+        UUID organizationId = organization.getId();
+        Instant occurredAt = newOccupancy.getMoveInDate().atStartOfDay(ZoneId.systemDefault()).toInstant();
+        String location = locationLabel(newOccupancy);
+
+        activityEventRecorder.record(
+                organizationId,
+                membershipId,
+                ActivityEventCategory.ACCOMMODATION,
+                ActivityEventTypes.OCCUPANCY_TRANSFERRED,
+                "Transferred accommodation",
+                location,
+                occupancyMetadata(newOccupancy),
+                occurredAt,
+                SOURCE_OCCUPANCY,
+                occupancySourceId(newOccupancy.getId(), "TRANSFERRED")
+        );
+
+        if (organization.getAccommodationMode() == AccommodationMode.BED_BASED) {
+            activityEventRecorder.record(
+                    organizationId,
+                    membershipId,
+                    ActivityEventCategory.ACCOMMODATION,
+                    ActivityEventTypes.BED_CHANGED,
+                    "Bed changed",
+                    location,
+                    occupancyMetadata(newOccupancy),
+                    occurredAt,
+                    SOURCE_OCCUPANCY,
+                    occupancySourceId(newOccupancy.getId(), "BED_CHANGED")
+            );
+        } else {
+            activityEventRecorder.record(
+                    organizationId,
+                    membershipId,
+                    ActivityEventCategory.ACCOMMODATION,
+                    ActivityEventTypes.ROOM_CHANGED,
+                    "Room changed",
+                    location,
+                    occupancyMetadata(newOccupancy),
+                    occurredAt,
+                    SOURCE_OCCUPANCY,
+                    occupancySourceId(newOccupancy.getId(), "ROOM_CHANGED")
+            );
+        }
+    }
+
+    private static Map<String, Object> occupancyMetadata(Occupancy occupancy) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("occupancyId", occupancy.getId().toString());
+        if (occupancy.getBed() != null) {
+            metadata.put("bedId", occupancy.getBed().getId().toString());
+            metadata.put("bedLabel", occupancy.getBed().getBedLabel());
+        }
+        if (occupancy.getUnitSpace() != null) {
+            metadata.put("unitSpaceId", occupancy.getUnitSpace().getId().toString());
+            metadata.put("unitIdentifier", occupancy.getUnitSpace().getIdentifier());
+        }
+        return metadata;
+    }
+
+    private static UUID occupancySourceId(UUID occupancyId, String suffix) {
+        return UUID.nameUUIDFromBytes((occupancyId.toString() + ":" + suffix).getBytes());
+    }
+
+    private static String locationLabel(Occupancy occupancy) {
+        if (occupancy.getBed() != null) {
+            return occupancy.getBed().getBedLabel();
+        }
+        if (occupancy.getUnitSpace() != null) {
+            return occupancy.getUnitSpace().getIdentifier();
+        }
+        return "—";
+    }
+
     static OccupancyResponse toResponse(Occupancy occupancy) {
         return new OccupancyResponse(
                 occupancy.getId(),
@@ -349,7 +516,8 @@ public class OccupancyService {
                 occupancy.getMoveInDate(),
                 occupancy.getMoveOutDate(),
                 occupancy.isCurrent(),
-                occupancy.getMonthlyRent()
+                occupancy.getMonthlyRent(),
+                occupancy.getOccupancyClassification()
         );
     }
 }

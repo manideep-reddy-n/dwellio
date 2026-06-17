@@ -46,7 +46,6 @@ export default function ResidentHomePage() {
           orgName={activeOrg?.name ?? "Your stay"}
           orgSlug={orgSlug ?? ""}
           orgLogoUrl={activeOrg?.logoUrl}
-          openComplaints={openComplaints}
         />
 
         <div className="grid gap-4 lg:grid-cols-2">

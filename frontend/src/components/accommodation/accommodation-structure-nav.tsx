@@ -41,15 +41,25 @@ import type {
   VizSpaceNode,
 } from "@/types/api/accommodation";
 import type { useAccommodationMutations } from "@/hooks/use-accommodation";
+import { ApiError } from "@/lib/api/client";
+import { formatFloorLabel } from "@/lib/accommodation/format";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof ApiError ? error.message : fallback;
+}
 
 interface AccommodationStructureNavProps {
   visualization: AccommodationVisualization;
   occupancies?: StaffOccupancy[];
   mutations: ReturnType<typeof useAccommodationMutations>;
+  transferSelectMode?: boolean;
   onSelectBed?: (bed: VizBedNode, space: VizSpaceNode) => void;
   onSelectSpace?: (space: VizSpaceNode) => void;
+  onReleaseBed?: (bed: VizBedNode, space: VizSpaceNode) => void;
+  onReleaseSpace?: (space: VizSpaceNode) => void;
+  onEditRentBed?: (bed: VizBedNode, space: VizSpaceNode) => void;
 }
 
 type View =
@@ -72,8 +82,12 @@ export function AccommodationStructureNav({
   visualization,
   occupancies = [],
   mutations,
+  transferSelectMode = false,
   onSelectBed,
   onSelectSpace,
+  onReleaseBed,
+  onReleaseSpace,
+  onEditRentBed,
 }: AccommodationStructureNavProps) {
   const [view, setView] = useState<View>({ level: "buildings" });
   const [addOpen, setAddOpen] = useState(false);
@@ -87,6 +101,24 @@ export function AccommodationStructureNav({
 
   const bedBased = visualization.accommodationMode === "BED_BASED";
   const current = occupancies.filter((o) => o.current);
+
+  const resolvedView = useMemo((): View => {
+    if (view.level === "buildings") {
+      return view;
+    }
+    const building = visualization.buildings.find((b) => b.id === view.building.id);
+    if (!building) {
+      return { level: "buildings" };
+    }
+    if (view.level === "floors") {
+      return { level: "floors", building };
+    }
+    const floor = building.floors.find((f) => f.id === view.floor.id);
+    if (!floor) {
+      return { level: "floors", building };
+    }
+    return { level: "spaces", building, floor };
+  }, [view, visualization.buildings]);
 
   const residentCountForBuilding = useMemo(() => {
     const map = new Map<string, number>();
@@ -147,25 +179,26 @@ export function AccommodationStructureNav({
         toast.success("Block created");
       } else if (view.level === "floors") {
         await mutations.createFloor.mutateAsync({
-          buildingId: view.building.id,
+          buildingId: resolvedView.level === "floors" ? resolvedView.building.id : view.building.id,
           body: {
             floorNumber: Number(floorNumberInput) || 1,
-            name: nameInput.trim() || `Floor ${floorNumberInput}`,
+            name: nameInput.trim() || undefined,
           },
         });
         toast.success("Floor created");
       } else if (view.level === "spaces") {
         if (!nameInput.trim()) return;
+        const floorId = resolvedView.level === "spaces" ? resolvedView.floor.id : view.floor.id;
         await mutations.createSpace.mutateAsync({
-          floorId: view.floor.id,
+          floorId,
           body: { identifier: nameInput.trim() },
         });
         toast.success(bedBased ? "Room created" : "Unit created");
       }
       setNameInput("");
       setAddOpen(false);
-    } catch {
-      toast.error("Could not create");
+    } catch (error) {
+      toast.error(errorMessage(error, "Could not create"));
     }
   }
 
@@ -180,8 +213,8 @@ export function AccommodationStructureNav({
       setNameInput("");
       setAddBedSpaceId(null);
       setAddOpen(false);
-    } catch {
-      toast.error("Could not create bed");
+    } catch (error) {
+      toast.error(errorMessage(error, "Could not create bed"));
     }
   }
 
@@ -210,8 +243,8 @@ export function AccommodationStructureNav({
       }
       toast.success("Updated");
       setEditOpen(false);
-    } catch {
-      toast.error("Could not update");
+    } catch (error) {
+      toast.error(errorMessage(error, "Could not update"));
     }
   }
 
@@ -239,8 +272,8 @@ export function AccommodationStructureNav({
       if (view.level === "spaces" && (deleteTarget.type === "floor" || deleteTarget.type === "building")) {
         setView({ level: "buildings" });
       }
-    } catch {
-      toast.error("Could not delete");
+    } catch (error) {
+      toast.error(errorMessage(error, "Could not delete"));
     }
   }
 
@@ -249,6 +282,36 @@ export function AccommodationStructureNav({
     setEditId(id);
     setNameInput(currentName);
     setEditOpen(true);
+  }
+
+  function isBedOccupied(bed: VizBedNode) {
+    return bed.status === "OCCUPIED" || Boolean(bed.currentOccupant);
+  }
+
+  function isSpaceOccupied(space: VizSpaceNode) {
+    return space.status === "OCCUPIED" || Boolean(space.currentOccupant);
+  }
+
+  function handleBedAction(bed: VizBedNode, space: VizSpaceNode) {
+    if (transferSelectMode) {
+      onSelectBed?.(bed, space);
+      return;
+    }
+    if (!isBedOccupied(bed)) {
+      onSelectBed?.(bed, space);
+    }
+  }
+
+  function handleSpaceAction(space: VizSpaceNode) {
+    if (transferSelectMode) {
+      onSelectSpace?.(space);
+      return;
+    }
+    if (isSpaceOccupied(space)) {
+      onReleaseSpace?.(space);
+      return;
+    }
+    onSelectSpace?.(space);
   }
 
   return (
@@ -271,32 +334,32 @@ export function AccommodationStructureNav({
             <button type="button" className="hover:text-foreground" onClick={() => setView({ level: "buildings" })}>
               All blocks
             </button>
-            {view.level !== "buildings" && (
+            {resolvedView.level !== "buildings" && (
               <>
                 <ChevronRight className="size-3" />
-                <span className="font-medium text-foreground">{view.building.name}</span>
+                <span className="font-medium text-foreground">{resolvedView.building.name}</span>
               </>
             )}
-            {view.level === "spaces" && (
+            {resolvedView.level === "spaces" && (
               <>
                 <ChevronRight className="size-3" />
                 <span className="font-medium text-foreground">
-                  {view.floor.name ?? `Floor ${view.floor.floorNumber}`}
+                  {formatFloorLabel(resolvedView.floor)}
                 </span>
               </>
             )}
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          {view.level !== "buildings" && (
+          {resolvedView.level !== "buildings" && (
             <Button
               variant="ghost"
               size="sm"
               className="gap-1 px-0 text-muted-foreground"
               onClick={() =>
                 setView(
-                  view.level === "spaces"
-                    ? { level: "floors", building: view.building }
+                  resolvedView.level === "spaces"
+                    ? { level: "floors", building: resolvedView.building }
                     : { level: "buildings" },
                 )
               }
@@ -306,7 +369,7 @@ export function AccommodationStructureNav({
             </Button>
           )}
 
-          {view.level === "buildings" &&
+          {resolvedView.level === "buildings" &&
             visualization.buildings.map((building) => (
               <StructureRow
                 key={building.id}
@@ -326,31 +389,29 @@ export function AccommodationStructureNav({
               />
             ))}
 
-          {view.level === "floors" &&
-            view.building.floors.map((floor) => (
+          {resolvedView.level === "floors" &&
+            resolvedView.building.floors.map((floor) => (
               <StructureRow
                 key={floor.id}
                 icon={<Layers className="size-4 text-teal-600" />}
-                title={floor.name ?? `Floor ${floor.floorNumber}`}
+                title={formatFloorLabel(floor)}
                 subtitle={`${floor.spaces.length} ${bedBased ? "room" : "unit"}${floor.spaces.length === 1 ? "" : "s"}`}
-                onOpen={() => setView({ level: "spaces", building: view.building, floor })}
-                onEdit={() =>
-                  openEdit("floor", floor.id, floor.name ?? `Floor ${floor.floorNumber}`)
-                }
+                onOpen={() => setView({ level: "spaces", building: resolvedView.building, floor })}
+                onEdit={() => openEdit("floor", floor.id, formatFloorLabel(floor))}
                 onDelete={() =>
                   setDeleteTarget({
                     type: "floor",
                     id: floor.id,
-                    name: floor.name ?? `Floor ${floor.floorNumber}`,
+                    name: formatFloorLabel(floor),
                     residentCount: residentCountForFloor(floor),
                   })
                 }
               />
             ))}
 
-          {view.level === "spaces" && (
+          {resolvedView.level === "spaces" && (
             <div className="grid gap-2 sm:grid-cols-2">
-              {view.floor.spaces.map((space) => (
+              {resolvedView.floor.spaces.map((space) => (
                 <div
                   key={space.id}
                   className={cn("rounded-lg border p-3", spaceStatusColors[space.status], "text-white")}
@@ -386,17 +447,52 @@ export function AccommodationStructureNav({
                     <div className="mt-2 flex flex-wrap gap-1">
                       {space.beds.map((bed) => (
                         <div key={bed.id} className="flex items-center gap-0.5">
-                          <button
-                            type="button"
-                            className={cn(
-                              "rounded px-2 py-0.5 text-xs font-medium",
-                              bedStatusColors[bed.status],
-                              onSelectBed && "cursor-pointer hover:opacity-90",
-                            )}
-                            onClick={() => onSelectBed?.(bed, space)}
-                          >
-                            Bed {bed.bedLabel}
-                          </button>
+                          {isBedOccupied(bed) && !transferSelectMode ? (
+                            <div className="flex flex-wrap items-center gap-0.5">
+                              <span
+                                className={cn(
+                                  "rounded px-2 py-0.5 text-xs font-medium",
+                                  bedStatusColors[bed.status],
+                                )}
+                              >
+                                Bed {bed.bedLabel}
+                                {bed.currentOccupant
+                                  ? ` · ${bed.currentOccupant.residentName}`
+                                  : ""}
+                              </span>
+                              {onEditRentBed && (
+                                <button
+                                  type="button"
+                                  className="rounded bg-white/25 px-2 py-0.5 text-xs font-medium hover:bg-white/35"
+                                  onClick={() => onEditRentBed(bed, space)}
+                                >
+                                  Rent
+                                </button>
+                              )}
+                              {onReleaseBed && (
+                                <button
+                                  type="button"
+                                  className="rounded bg-white/25 px-2 py-0.5 text-xs font-medium hover:bg-white/35"
+                                  onClick={() => onReleaseBed(bed, space)}
+                                >
+                                  Release
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className={cn(
+                                "rounded px-2 py-0.5 text-xs font-medium",
+                                bedStatusColors[bed.status],
+                                (onSelectBed || transferSelectMode) &&
+                                  "cursor-pointer hover:opacity-90",
+                              )}
+                              onClick={() => handleBedAction(bed, space)}
+                            >
+                              {transferSelectMode ? `Bed ${bed.bedLabel}` : `Bed ${bed.bedLabel}`}
+                            </button>
+                          )}
                           <ItemMenu
                             compact
                             onEdit={() => openEdit("bed", bed.id, bed.bedLabel)}
@@ -428,28 +524,37 @@ export function AccommodationStructureNav({
                       Add bed
                     </Button>
                   )}
-                  {!bedBased && onSelectSpace && (
+                  {!bedBased && (onSelectSpace || onReleaseSpace || transferSelectMode) && (
                     <Button
                       size="sm"
                       variant="secondary"
                       className="mt-2 h-7 bg-white/20 text-white hover:bg-white/30"
-                      onClick={() => onSelectSpace(space)}
+                      onClick={() => handleSpaceAction(space)}
                     >
-                      Allocate
+                      {transferSelectMode
+                        ? "Select"
+                        : isSpaceOccupied(space)
+                          ? "Release"
+                          : "Allocate"}
                     </Button>
+                  )}
+                  {!bedBased && isSpaceOccupied(space) && space.currentOccupant && (
+                    <p className="mt-1 text-xs opacity-90">
+                      Occupied by {space.currentOccupant.residentName}
+                    </p>
                   )}
                 </div>
               ))}
             </div>
           )}
 
-          {view.level === "buildings" && visualization.buildings.length === 0 && (
+          {resolvedView.level === "buildings" && visualization.buildings.length === 0 && (
             <p className="text-sm text-muted-foreground">No blocks yet. Add your first block above.</p>
           )}
-          {view.level === "floors" && view.building.floors.length === 0 && (
+          {resolvedView.level === "floors" && resolvedView.building.floors.length === 0 && (
             <p className="text-sm text-muted-foreground">No floors in this block yet.</p>
           )}
-          {view.level === "spaces" && view.floor.spaces.length === 0 && (
+          {resolvedView.level === "spaces" && resolvedView.floor.spaces.length === 0 && (
             <p className="text-sm text-muted-foreground">
               No {bedBased ? "rooms" : "units"} on this floor yet.
             </p>
@@ -487,6 +592,11 @@ export function AccommodationStructureNav({
                         : "Unit identifier"}
               </Label>
               <Input value={nameInput} onChange={(e) => setNameInput(e.target.value)} />
+              {view.level === "floors" && !addBedSpaceId && (
+                <p className="text-xs text-muted-foreground">
+                  Floor number is always shown in the list. Add a name only if you need a label like &quot;Ground&quot;.
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -495,8 +605,8 @@ export function AccommodationStructureNav({
             </Button>
             <Button
               onClick={() => {
-                if (addBedSpaceId && view.level === "spaces") {
-                  const space = view.floor.spaces.find((s) => s.id === addBedSpaceId);
+                if (addBedSpaceId && resolvedView.level === "spaces") {
+                  const space = resolvedView.floor.spaces.find((s) => s.id === addBedSpaceId);
                   if (space) void handleAddBed(space);
                 } else {
                   void handleAdd();

@@ -1,11 +1,20 @@
 import { apiConfig } from "@/config/api";
 import { apiRequest } from "@/lib/api/client";
 import type { Complaint, CreateComplaintInput } from "@/types/api/complaint";
+import type { ComplaintSlaSummary } from "@/types/api/complaint-sla";
 import type { ComplaintCategory } from "@/types/enums";
 
+function buildComplaintQuery(params: { category?: ComplaintCategory; slaBreach?: boolean }) {
+  const search = new URLSearchParams();
+  if (params.category) search.set("category", params.category);
+  if (params.slaBreach === true) search.set("slaBreach", "true");
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
+}
+
 export const complaintsApi = {
-  listAll: (orgId: string, category?: ComplaintCategory) => {
-    const params = category ? `?category=${category}` : "";
+  listAll: (orgId: string, filters?: { category?: ComplaintCategory; slaBreach?: boolean }) => {
+    const params = buildComplaintQuery(filters ?? {});
     return apiRequest<Complaint[]>(apiConfig.baseUrl, `/organizations/${orgId}/complaints${params}`);
   },
 
@@ -62,4 +71,7 @@ export const complaintsApi = {
     apiRequest<void>(apiConfig.baseUrl, `/organizations/${orgId}/complaints/${complaintId}`, {
       method: "DELETE",
     }),
+
+  slaSummary: (orgId: string) =>
+    apiRequest<ComplaintSlaSummary>(apiConfig.baseUrl, `/organizations/${orgId}/complaints/sla-summary`),
 };

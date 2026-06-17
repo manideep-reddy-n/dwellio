@@ -32,5 +32,37 @@ export interface OrganizationMetrics {
   occupiedUnits: number | null;
   blockedUnits: number | null;
   occupancyRate: number | null;
+  expectedRevenueMonth: number | null;
+  collectedRevenueMonth: number | null;
+  outstandingRevenueMonth: number | null;
+  collectionRate: number | null;
+  defaultersCount: number;
+  revenueTrend: RevenueTrendPoint[];
+  forecastRevenueNextMonth: number | null;
+  moveInsMonth: number;
+  moveOutsMonth: number;
+  avgStayDays: number | null;
+  turnoverRate: number | null;
+  pendingPaymentsCount: number;
+  slaFirstResponseHours: number;
+  slaResolutionHours: number;
+  slaComplianceRate: number | null;
+  slaViolationsCount: number;
+  reopenedComplaintsCount: number;
+  avgBreakfastRating: number | null;
+  avgLunchRating: number | null;
+  avgDinnerRating: number | null;
+  mealRatingsTrend: MealRatingTrendPoint[];
   refreshedAt: string;
+}
+
+export interface MealRatingTrendPoint {
+  date: string;
+  avgRating: number | null;
+}
+
+export interface RevenueTrendPoint {
+  month: string;
+  expected: number;
+  collected: number;
 }

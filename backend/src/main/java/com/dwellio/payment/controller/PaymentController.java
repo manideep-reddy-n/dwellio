@@ -7,7 +7,10 @@ import com.dwellio.invoice.service.InvoiceService;
 import com.dwellio.payment.dto.CreateManualChargeRequest;
 import com.dwellio.payment.dto.PaymentResponse;
 import com.dwellio.payment.dto.RecordPaymentRequest;
+import com.dwellio.billing.service.GatedMaintenanceBillingService;
+import com.dwellio.organization.repository.OrganizationRepository;
 import com.dwellio.payment.service.PaymentService;
+import com.dwellio.domain.enums.OrganizationType;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -33,10 +36,17 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final InvoiceService invoiceService;
     private final AuthorizationService authorizationService;
+    private final GatedMaintenanceBillingService gatedMaintenanceBillingService;
+    private final OrganizationRepository organizationRepository;
 
     @GetMapping
     @PreAuthorize("@authz.hasPermission(#organizationId, 'payment:manage')")
     public List<PaymentResponse> list(@PathVariable UUID organizationId) {
+        organizationRepository.findActiveById(organizationId).ifPresent(organization -> {
+            if (organization.getType() == OrganizationType.GATED_COMMUNITY) {
+                gatedMaintenanceBillingService.syncOrganization(organization);
+            }
+        });
         return paymentService.listForOrganization(organizationId);
     }
 

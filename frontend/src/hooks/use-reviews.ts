@@ -36,6 +36,7 @@ export function useCreateReview(orgId: string | undefined) {
     onSuccess: (review) => {
       if (!orgId) return;
       queryClient.setQueryData<Review | null>(queryKeys.reviews.mine(orgId), review);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
     },
   });
 }
@@ -69,6 +70,7 @@ export function useUpdateReview(orgId: string | undefined) {
     onSettled: () => {
       if (!orgId) return;
       void queryClient.invalidateQueries({ queryKey: queryKeys.reviews.mine(orgId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
     },
   });
 }

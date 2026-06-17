@@ -1,12 +1,17 @@
 "use client";
 
+import { useParams } from "next/navigation";
 import { ComplaintCreateDialog } from "@/components/resident/complaint-create-dialog";
 import { ComplaintList } from "@/components/resident/complaint-list";
 import { PageTransition } from "@/components/shared/page-transition";
 import { useMyComplaints } from "@/hooks/use-complaints";
 import { usePermissions } from "@/hooks/use-permissions";
 
+export const dynamic = "force-dynamic";
+
 export default function ResidentComplaintsPage() {
+  const params = useParams<{ orgSlug: string }>();
+  const orgSlug = params.orgSlug;
   const { activeOrg, can } = usePermissions();
   const orgId = activeOrg?.id;
 
@@ -31,6 +36,7 @@ export default function ResidentComplaintsPage() {
           <ComplaintList
             complaints={complaints}
             isLoading={isLoading}
+            orgSlug={orgSlug}
             emptyMessage="You have not submitted any complaints yet."
           />
         ) : (

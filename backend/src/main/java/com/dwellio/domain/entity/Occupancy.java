@@ -1,6 +1,7 @@
 package com.dwellio.domain.entity;
 
 import com.dwellio.common.entity.BaseEntity;
+import com.dwellio.domain.enums.OccupancyClassification;
 import com.dwellio.domain.enums.OccupancyTarget;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -58,4 +59,8 @@ public class Occupancy extends BaseEntity {
 
     @Column(name = "monthly_rent")
     private BigDecimal monthlyRent;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "occupancy_classification", length = 30)
+    private OccupancyClassification occupancyClassification;
 }

@@ -105,4 +105,6 @@ export interface StaffOccupancy {
   moveInDate: string;
   moveOutDate: string | null;
   current: boolean;
+  monthlyRent: number | null;
+  occupancyClassification: "RESIDENT" | "OWNER_OCCUPIED" | "TENANT_OCCUPIED" | "VACANT" | null;
 }

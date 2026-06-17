@@ -9,6 +9,9 @@ import com.dwellio.domain.entity.LeaveRequest;
 import com.dwellio.domain.entity.Membership;
 import com.dwellio.domain.entity.Organization;
 import com.dwellio.domain.entity.User;
+import com.dwellio.activity.ActivityEventTypes;
+import com.dwellio.activity.service.ActivityEventRecorder;
+import com.dwellio.domain.enums.ActivityEventCategory;
 import com.dwellio.domain.enums.LeaveRequestStatus;
 import com.dwellio.domain.enums.MembershipStatus;
 import com.dwellio.domain.enums.NotificationType;
@@ -33,12 +36,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class LeaveRequestService {
 
+    private static final String SOURCE_MEMBERSHIP = "MEMBERSHIP";
+
     private final LeaveRequestRepository leaveRequestRepository;
     private final MembershipRepository membershipRepository;
     private final OrganizationService organizationService;
     private final AuthorizationService authorizationService;
     private final NotificationService notificationService;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final ActivityEventRecorder activityEventRecorder;
     private final Clock clock;
 
     @Transactional
@@ -92,13 +98,27 @@ public class LeaveRequestService {
         User reviewer = referenceUser(reviewerUserId);
 
         Membership membership = leaveRequest.getMembership();
+        Instant leftAt = clock.instant();
         membership.setStatus(MembershipStatus.LEFT);
-        membership.setLeftAt(clock.instant());
+        membership.setLeftAt(leftAt);
         membership.setExitReason("Leave approved by property team");
 
         leaveRequest.setStatus(LeaveRequestStatus.APPROVED);
         leaveRequest.setReviewedBy(reviewer);
-        leaveRequest.setReviewedAt(Instant.now(clock));
+        leaveRequest.setReviewedAt(leftAt);
+
+        activityEventRecorder.record(
+                organizationId,
+                membership.getId(),
+                ActivityEventCategory.MEMBERSHIP,
+                ActivityEventTypes.MEMBERSHIP_LEFT,
+                "Left organization",
+                membership.getExitReason(),
+                Map.of("membershipId", membership.getId().toString(), "leaveRequestId", leaveRequest.getId().toString()),
+                leftAt,
+                SOURCE_MEMBERSHIP,
+                UUID.nameUUIDFromBytes((membership.getId().toString() + ":LEFT").getBytes())
+        );
 
         notifyResident(
                 leaveRequest,

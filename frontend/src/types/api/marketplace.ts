@@ -16,6 +16,13 @@ export interface PublicOrganizationMetrics {
   searchRankScore?: number | null;
 }
 
+export interface PublicOrganizationImage {
+  id: string;
+  url: string;
+  caption: string | null;
+  sortOrder: number;
+}
+
 export interface PublicOrganizationResponse {
   id: string;
   slug: string;
@@ -34,6 +41,7 @@ export interface PublicOrganizationResponse {
   verified: boolean;
   logoUrl: string | null;
   amenities?: PublicAmenity[];
+  photos?: PublicOrganizationImage[];
 }
 
 export interface PublicAmenity {
@@ -56,6 +64,8 @@ export interface PublicOrganizationSummary {
   metrics: PublicOrganizationMetrics;
   verified: boolean;
   logoUrl: string | null;
+  coverPhotoUrl?: string | null;
+  photos?: PublicOrganizationImage[];
 }
 
 export interface PublicReview {

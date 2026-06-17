@@ -10,6 +10,9 @@ import com.dwellio.domain.entity.Organization;
 import com.dwellio.domain.entity.ResidentProfile;
 import com.dwellio.domain.entity.Role;
 import com.dwellio.domain.entity.User;
+import com.dwellio.activity.ActivityEventTypes;
+import com.dwellio.activity.service.ActivityEventRecorder;
+import com.dwellio.domain.enums.ActivityEventCategory;
 import com.dwellio.domain.enums.JoinRequestStatus;
 import com.dwellio.domain.enums.MembershipStatus;
 import com.dwellio.domain.enums.ResidentStatus;
@@ -26,7 +29,10 @@ import com.dwellio.metrics.event.MembershipActivatedEvent;
 import com.dwellio.organization.service.OrganizationService;
 import com.dwellio.role.service.RoleService;
 import java.time.Clock;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,6 +42,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class JoinRequestService {
 
+    private static final String SOURCE_JOIN_REQUEST = "JOIN_REQUEST";
+    private static final String SOURCE_MEMBERSHIP = "MEMBERSHIP";
+
     private final JoinRequestRepository joinRequestRepository;
     private final MembershipRepository membershipRepository;
     private final ResidentProfileRepository residentProfileRepository;
@@ -44,6 +53,7 @@ public class JoinRequestService {
     private final RoleService roleService;
     private final Clock clock;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final ActivityEventRecorder activityEventRecorder;
 
     @Transactional
     public JoinRequestResponse submit(UUID organizationId, UUID userId, SubmitJoinRequestRequest request) {
@@ -122,6 +132,36 @@ public class JoinRequestService {
         joinRequest.setReviewedBy(reviewer);
         joinRequest.setReviewedAt(clock.instant());
         joinRequestRepository.save(joinRequest);
+
+        Instant approvedAt = clock.instant();
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("joinRequestId", joinRequest.getId().toString());
+        metadata.put("membershipId", membership.getId().toString());
+
+        activityEventRecorder.record(
+                organizationId,
+                membership.getId(),
+                ActivityEventCategory.MEMBERSHIP,
+                ActivityEventTypes.MEMBERSHIP_APPROVED,
+                "Membership approved",
+                joinRequest.getUser().getFullName() + " was approved",
+                metadata,
+                approvedAt,
+                SOURCE_JOIN_REQUEST,
+                joinRequest.getId()
+        );
+        activityEventRecorder.record(
+                organizationId,
+                membership.getId(),
+                ActivityEventCategory.MEMBERSHIP,
+                ActivityEventTypes.MEMBERSHIP_JOINED,
+                "Joined organization",
+                joinRequest.getUser().getFullName() + " became a member",
+                metadata,
+                approvedAt,
+                SOURCE_MEMBERSHIP,
+                membership.getId()
+        );
 
         afterCommitEventPublisher.publish(new MembershipActivatedEvent(
                 organizationId,

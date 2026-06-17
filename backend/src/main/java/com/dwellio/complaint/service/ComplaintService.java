@@ -19,11 +19,15 @@ import com.dwellio.complaint.event.ComplaintReopenedEvent;
 import com.dwellio.complaint.event.ComplaintResolvedEvent;
 import com.dwellio.complaint.repository.ComplaintAttachmentRepository;
 import com.dwellio.complaint.repository.ComplaintRepository;
+import com.dwellio.complaint.sla.ComplaintSlaSettings;
 import com.dwellio.domain.entity.Asset;
 import com.dwellio.domain.entity.Complaint;
 import com.dwellio.domain.entity.ComplaintAttachment;
 import com.dwellio.domain.entity.Membership;
 import com.dwellio.domain.entity.Organization;
+import com.dwellio.activity.ActivityEventTypes;
+import com.dwellio.activity.service.ActivityEventRecorder;
+import com.dwellio.domain.enums.ActivityEventCategory;
 import com.dwellio.domain.enums.ComplaintCategory;
 import com.dwellio.domain.enums.ComplaintPriority;
 import com.dwellio.domain.enums.ComplaintStatus;
@@ -32,6 +36,8 @@ import com.dwellio.operations.service.OperationsGuard;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -42,6 +48,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ComplaintService {
+
+    private static final String SOURCE_COMPLAINT = "COMPLAINT";
 
     private static final Set<ComplaintStatus> OPEN_STATUSES = EnumSet.of(
             ComplaintStatus.OPEN,
@@ -67,6 +75,8 @@ public class ComplaintService {
     private final OperationsGuard operationsGuard;
     private final AuthorizationService authorizationService;
     private final ComplaintEventPublisher eventPublisher;
+    private final ActivityEventRecorder activityEventRecorder;
+    private final ComplaintSlaService complaintSlaService;
     private final Clock clock;
 
     @Transactional
@@ -87,6 +97,15 @@ public class ComplaintService {
         complaint.setAsset(resolveAsset(organizationId, request.assetId()));
 
         complaint = complaintRepository.save(complaint);
+        recordComplaintEvent(
+                organizationId,
+                creator.getId(),
+                complaint,
+                ActivityEventTypes.COMPLAINT_CREATED,
+                "Complaint created",
+                complaint.getCreatedAt(),
+                "CREATED"
+        );
         publishMetrics(organizationId);
         eventPublisher.publishCreated(new ComplaintCreatedEvent(
                 organizationId,
@@ -98,10 +117,12 @@ public class ComplaintService {
     }
 
     @Transactional(readOnly = true)
-    public List<ComplaintResponse> listAll(UUID organizationId, ComplaintCategory category) {
-        operationsGuard.requireOrganization(organizationId);
+    public List<ComplaintResponse> listAll(UUID organizationId, ComplaintCategory category, Boolean slaBreach) {
+        Organization organization = operationsGuard.requireOrganization(organizationId);
+        ComplaintSlaSettings settings = ComplaintSlaSettings.from(organization);
         return complaintRepository.findAllActiveByOrganizationId(organizationId, category).stream()
-                .map(this::toResponse)
+                .filter(complaint -> slaBreach == null || !slaBreach || complaintSlaService.isBreached(complaint, settings))
+                .map(complaint -> toResponse(complaint, settings))
                 .toList();
     }
 
@@ -170,6 +191,15 @@ public class ComplaintService {
         }
 
         publishMetrics(organizationId);
+        recordComplaintEvent(
+                organizationId,
+                complaint.getCreatedByMembership().getId(),
+                complaint,
+                ActivityEventTypes.COMPLAINT_ASSIGNED,
+                "Complaint assigned",
+                now,
+                "ASSIGNED"
+        );
         eventPublisher.publishAssigned(new ComplaintAssignedEvent(
                 organizationId,
                 complaint.getId(),
@@ -212,6 +242,15 @@ public class ComplaintService {
         complaint.setStatus(ComplaintStatus.RESOLVED);
         complaint.setResolvedAt(now);
         publishMetrics(organizationId);
+        recordComplaintEvent(
+                organizationId,
+                complaint.getCreatedByMembership().getId(),
+                complaint,
+                ActivityEventTypes.COMPLAINT_RESOLVED,
+                "Complaint resolved",
+                now,
+                "RESOLVED"
+        );
         eventPublisher.publishResolved(new ComplaintResolvedEvent(
                 organizationId,
                 complaint.getId(),
@@ -231,8 +270,18 @@ public class ComplaintService {
         }
 
         complaint.setStatus(ComplaintStatus.CLOSED);
-        complaint.setClosedAt(Instant.now(clock));
+        Instant closedAt = Instant.now(clock);
+        complaint.setClosedAt(closedAt);
         publishMetrics(organizationId);
+        recordComplaintEvent(
+                organizationId,
+                complaint.getCreatedByMembership().getId(),
+                complaint,
+                ActivityEventTypes.COMPLAINT_CLOSED,
+                "Complaint closed",
+                closedAt,
+                "CLOSED"
+        );
         return toResponse(complaint);
     }
 
@@ -257,6 +306,15 @@ public class ComplaintService {
         complaint.setAssignedToMembership(null);
 
         publishMetrics(organizationId);
+        recordComplaintEvent(
+                organizationId,
+                complaint.getCreatedByMembership().getId(),
+                complaint,
+                ActivityEventTypes.COMPLAINT_REOPENED,
+                "Complaint reopened",
+                Instant.now(clock),
+                "REOPENED"
+        );
         eventPublisher.publishReopened(new ComplaintReopenedEvent(
                 organizationId,
                 complaint.getId(),
@@ -348,8 +406,14 @@ public class ComplaintService {
     }
 
     private ComplaintResponse toResponse(Complaint complaint) {
+        ComplaintSlaSettings settings = ComplaintSlaSettings.from(complaint.getOrganization());
+        return toResponse(complaint, settings);
+    }
+
+    private ComplaintResponse toResponse(Complaint complaint, ComplaintSlaSettings settings) {
         List<ComplaintAttachment> attachments = attachmentRepository.findAllByComplaintId(complaint.getId());
-        return ComplaintResponse.from(complaint, attachments);
+        boolean slaBreached = complaintSlaService.isBreached(complaint, settings);
+        return ComplaintResponse.from(complaint, attachments, slaBreached);
     }
 
     private Membership getMembership(UUID organizationId, UUID membershipId) {
@@ -359,5 +423,35 @@ public class ComplaintService {
 
     private void publishMetrics(UUID organizationId) {
         eventPublisher.publishMetricsChanged(organizationId);
+    }
+
+    private void recordComplaintEvent(
+            UUID organizationId,
+            UUID membershipId,
+            Complaint complaint,
+            String eventType,
+            String title,
+            Instant occurredAt,
+            String sourceSuffix
+    ) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("complaintId", complaint.getId().toString());
+        metadata.put("category", complaint.getCategory().name());
+        activityEventRecorder.record(
+                organizationId,
+                membershipId,
+                ActivityEventCategory.COMPLAINT,
+                eventType,
+                title,
+                complaint.getTitle(),
+                metadata,
+                occurredAt,
+                SOURCE_COMPLAINT,
+                complaintSourceId(complaint.getId(), sourceSuffix)
+        );
+    }
+
+    private static UUID complaintSourceId(UUID complaintId, String suffix) {
+        return UUID.nameUUIDFromBytes((complaintId.toString() + ":" + suffix).getBytes());
     }
 }

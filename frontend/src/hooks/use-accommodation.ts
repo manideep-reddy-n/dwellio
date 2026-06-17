@@ -58,6 +58,7 @@ export function useAccommodationMutations(orgId: string | undefined) {
     void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(orgId) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.occupancies.all(orgId) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.liveOps(orgId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
   };
 
   const createBuilding = useMutation({
@@ -100,6 +101,7 @@ export function useAccommodationMutations(orgId: string | undefined) {
       unitSpaceId?: string;
       moveInDate: string;
       monthlyRent?: number;
+      occupancyClassification?: "RESIDENT" | "OWNER_OCCUPIED" | "TENANT_OCCUPIED";
     }) => occupanciesApi.allocate(orgId!, body),
     onSettled: invalidateViz,
   });
@@ -117,6 +119,12 @@ export function useAccommodationMutations(orgId: string | undefined) {
   const release = useMutation({
     mutationFn: ({ occupancyId, moveOutDate }: { occupancyId: string; moveOutDate: string }) =>
       occupanciesApi.release(orgId!, occupancyId, moveOutDate),
+    onSettled: invalidateViz,
+  });
+
+  const updateRent = useMutation({
+    mutationFn: ({ occupancyId, monthlyRent }: { occupancyId: string; monthlyRent: number }) =>
+      occupanciesApi.updateRent(orgId!, occupancyId, monthlyRent),
     onSettled: invalidateViz,
   });
 
@@ -209,6 +217,7 @@ export function useAccommodationMutations(orgId: string | undefined) {
     allocate,
     transfer,
     release,
+    updateRent,
     updateLayout,
     invalidateViz,
   };

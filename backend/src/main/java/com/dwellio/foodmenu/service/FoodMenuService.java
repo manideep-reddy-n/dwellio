@@ -6,7 +6,7 @@ import com.dwellio.domain.entity.FoodMenuSlot;
 import com.dwellio.domain.entity.Organization;
 import com.dwellio.domain.enums.MealType;
 import com.dwellio.domain.enums.NotificationType;
-import com.dwellio.domain.enums.OrganizationType;
+import com.dwellio.foodmenu.FoodMenuOrgSupport;
 import com.dwellio.foodmenu.dto.FoodMenuDayResponse;
 import com.dwellio.foodmenu.dto.FoodMenuMealResponse;
 import com.dwellio.foodmenu.dto.TodayMenuResponse;
@@ -184,10 +184,7 @@ public class FoodMenuService {
 
     private Organization requireFoodMenuOrg(UUID organizationId) {
         Organization organization = organizationService.findActiveOrganization(organizationId);
-        if (organization.getType() != OrganizationType.HOSTEL && organization.getType() != OrganizationType.PG) {
-            throw new com.dwellio.common.exception.BadRequestException("Food menu is available for hostels and PGs only");
-        }
-        return organization;
+        return FoodMenuOrgSupport.requireFoodMenuOrg(organization);
     }
 
     private void notifyResidentsMenuChanged(UUID organizationId, String slug) {

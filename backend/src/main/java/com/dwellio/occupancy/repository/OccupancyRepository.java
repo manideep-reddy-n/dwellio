@@ -55,6 +55,8 @@ public interface OccupancyRepository extends JpaRepository<Occupancy, UUID> {
             SELECT o FROM Occupancy o
             JOIN FETCH o.membership m
             JOIN FETCH m.user u
+            LEFT JOIN FETCH o.bed
+            LEFT JOIN FETCH o.unitSpace
             WHERE o.organization.id = :organizationId
             ORDER BY o.createdAt DESC
             """)
@@ -123,5 +125,18 @@ public interface OccupancyRepository extends JpaRepository<Occupancy, UUID> {
     List<Occupancy> findCurrentByBedId(
             @Param("organizationId") UUID organizationId,
             @Param("bedId") UUID bedId
+    );
+
+    @Query("""
+            SELECT o FROM Occupancy o
+            JOIN FETCH o.membership m
+            JOIN FETCH m.user u
+            WHERE o.current = true
+              AND o.organization.id = :organizationId
+              AND o.unitSpace.id = :unitSpaceId
+            """)
+    Optional<Occupancy> findCurrentOccupancyByUnitSpaceId(
+            @Param("organizationId") UUID organizationId,
+            @Param("unitSpaceId") UUID unitSpaceId
     );
 }

@@ -43,6 +43,7 @@ export const queryKeys = {
     mine: (orgId: string) => [...queryKeys.all, "complaints", orgId, "mine"] as const,
     detail: (orgId: string, complaintId: string) =>
       [...queryKeys.all, "complaints", orgId, complaintId] as const,
+    slaSummary: (orgId: string) => [...queryKeys.all, "complaints", orgId, "sla-summary"] as const,
   },
 
   announcements: {
@@ -77,9 +78,33 @@ export const queryKeys = {
 
   payments: (orgId: string) => [...queryKeys.all, "payments", orgId] as const,
 
+  billingRules: (orgId: string) => [...queryKeys.all, "billing-rules", orgId] as const,
+
+  revenue: (orgId: string) => [...queryKeys.all, "revenue", orgId] as const,
+
+  ledger: (orgId: string, membershipId?: string) =>
+    [...queryKeys.all, "ledger", orgId, membershipId ?? "all"] as const,
+
+  timeline: (orgId: string, membershipId?: string) =>
+    [...queryKeys.all, "timeline", orgId, membershipId ?? "all"] as const,
+
+  ownership: (orgId: string) => [...queryKeys.all, "ownership", orgId] as const,
+
+  accommodationHistory: (orgId: string, membershipId?: string) =>
+    [...queryKeys.all, "accommodation-history", orgId, membershipId ?? "all"] as const,
+
   foodMenu: (orgId: string) => [...queryKeys.all, "food-menu", orgId] as const,
+
+  mealFeedback: {
+    mine: (orgId: string, date?: string) =>
+      [...queryKeys.all, "meal-feedback", orgId, "mine", date ?? "today"] as const,
+    summary: (orgId: string) => [...queryKeys.all, "meal-feedback", orgId, "summary"] as const,
+  },
 
   verification: (orgId: string) => [...queryKeys.all, "verification", orgId] as const,
 
   memberships: (orgId: string) => [...queryKeys.all, "memberships", orgId] as const,
+
+  residentProfile: (orgId: string, membershipId: string) =>
+    [...queryKeys.all, "resident-profile", orgId, membershipId] as const,
 } as const;

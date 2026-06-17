@@ -8,12 +8,18 @@ import { queryDefaults } from "@/lib/query/defaults";
 import type { Complaint } from "@/types/api/complaint";
 import type { ComplaintCategory } from "@/types/enums";
 
-export function useOrgComplaints(orgId: string | undefined, category?: ComplaintCategory) {
+export function useOrgComplaints(
+  orgId: string | undefined,
+  filters?: { category?: ComplaintCategory; slaBreach?: boolean },
+) {
   const { authReady } = useAuthReady();
+  const filterKey: Record<string, string> = {};
+  if (filters?.category) filterKey.category = filters.category;
+  if (filters?.slaBreach) filterKey.slaBreach = "true";
 
   return useQuery({
-    queryKey: orgId ? queryKeys.complaints.all(orgId, category ? { category } : {}) : ["complaints", "disabled"],
-    queryFn: () => complaintsApi.listAll(orgId!, category),
+    queryKey: orgId ? queryKeys.complaints.all(orgId, filterKey) : ["complaints", "disabled"],
+    queryFn: () => complaintsApi.listAll(orgId!, filters),
     enabled: authReady && Boolean(orgId),
     staleTime: queryDefaults.staleTime.liveOps,
   });
@@ -40,8 +46,10 @@ export function useComplaintWorkflow(orgId: string | undefined) {
   const invalidate = () => {
     if (!orgId) return;
     void queryClient.invalidateQueries({ queryKey: queryKeys.complaints.all(orgId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.complaints.slaSummary(orgId) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(orgId) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.liveOps(orgId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
   };
 
   const optimisticStatus = (complaintId: string, status: Complaint["status"]) => {

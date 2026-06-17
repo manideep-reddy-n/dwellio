@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutGrid, LogOut, Megaphone, MessageSquare, Star, Wallet } from "lucide-react";
+import { useParams } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { OrganizationLogo } from "@/components/shared/organization-logo";
 import { buttonVariants } from "@/components/ui/button";
 import { residentHomeQuotes } from "@/lib/copy/home-messaging";
@@ -12,16 +13,17 @@ interface ResidentHomeHeroProps {
   orgName: string;
   orgSlug: string;
   orgLogoUrl?: string | null;
-  openComplaints?: number;
 }
 
 export function ResidentHomeHero({
   orgName,
-  orgSlug,
+  orgSlug: orgSlugProp,
   orgLogoUrl,
-  openComplaints = 0,
 }: ResidentHomeHeroProps) {
+  const params = useParams<{ orgSlug?: string }>();
   const activeLogo = useOrgStore((s) => s.activeOrg?.logoUrl);
+  const storeSlug = useOrgStore((s) => s.activeOrg?.slug);
+  const orgSlug = orgSlugProp || params.orgSlug || storeSlug || "";
   const logoUrl = orgLogoUrl ?? activeLogo;
 
   return (
@@ -29,61 +31,29 @@ export function ResidentHomeHero({
       <div className="flex items-start gap-4">
         <OrganizationLogo name={orgName} logoUrl={logoUrl} size="lg" className="mt-1" />
         <div className="min-w-0 flex-1">
-      <p className="text-sm font-medium text-sky-700 dark:text-sky-400">{residentHomeQuotes.eyebrow}</p>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{residentHomeQuotes.title}</h1>
-      <p className="mt-2 max-w-2xl text-muted-foreground">
-        {orgName} — {residentHomeQuotes.description}
-      </p>
+          <p className="text-sm font-medium text-sky-700 dark:text-sky-400">
+            {residentHomeQuotes.eyebrow}
+          </p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+            {residentHomeQuotes.title}
+          </h1>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            {orgName} — {residentHomeQuotes.description}
+          </p>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Link
-          href={`/app/${orgSlug}/resident/complaints`}
-          className={cn(buttonVariants({ size: "sm" }), "gap-2")}
-        >
-          <MessageSquare className="size-4" />
-          My complaints
-          {openComplaints > 0 && (
-            <span className="rounded-full bg-primary-foreground/20 px-1.5 text-xs">{openComplaints}</span>
-          )}
-        </Link>
-        <Link
-          href={`/app/${orgSlug}/resident/announcements`}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-2")}
-        >
-          <Megaphone className="size-4" />
-          Announcements
-        </Link>
-        <Link
-          href={`/app/${orgSlug}/resident/accommodation`}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-2")}
-        >
-          <LayoutGrid className="size-4" />
-          Building layout
-        </Link>
-        <Link
-          href={`/app/${orgSlug}/resident/payments`}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-2")}
-        >
-          <Wallet className="size-4" />
-          My rent
-        </Link>
-        <Link
-          href={`/app/${orgSlug}/resident/review`}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-2")}
-        >
-          <Star className="size-4" />
-          My review
-        </Link>
-        <Link
-          href="/app/profile"
-          className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-2 text-muted-foreground")}
-        >
-          <LogOut className="size-4" />
-          Leave org / account
-        </Link>
-      </div>
+      {orgSlug ? (
+        <div className="mt-6">
+          <Link
+            href="/app/profile"
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-2 text-muted-foreground")}
+          >
+            <LogOut className="size-4" />
+            Leave org / account
+          </Link>
+        </div>
+      ) : null}
     </section>
   );
 }

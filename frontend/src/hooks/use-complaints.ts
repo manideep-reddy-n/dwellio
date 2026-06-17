@@ -64,6 +64,7 @@ export function useCreateComplaint(orgId: string | undefined) {
       if (!orgId) return;
       void queryClient.invalidateQueries({ queryKey: queryKeys.complaints.mine(orgId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.resident.home(orgId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
     },
   });
 }

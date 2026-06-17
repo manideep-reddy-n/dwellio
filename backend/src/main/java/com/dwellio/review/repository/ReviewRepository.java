@@ -22,6 +22,8 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
 
     @Query("""
             SELECT r FROM Review r
+            JOIN FETCH r.membership m
+            JOIN FETCH m.user u
             WHERE r.organization.id = :organizationId
               AND r.membership.id = :membershipId
               AND r.deletedAt IS NULL

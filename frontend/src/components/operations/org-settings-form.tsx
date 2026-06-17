@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,6 @@ import { ErrorState } from "@/components/shared/error-state";
 import { LocationPicker, type LocationValue } from "@/components/maps/location-picker";
 import { useOrganization, useUpdateOrganization, useUploadOrganizationLogo } from "@/hooks/use-organization";
 import { organizationImagesApi } from "@/lib/api/organizations";
-import { apiConfig } from "@/config/api";
 import type { Organization } from "@/types/api/organization";
 import { resolveMediaUrl } from "@/lib/media/resolve-url";
 import { toast } from "sonner";
@@ -34,9 +34,21 @@ export function OrgSettingsForm({ orgId }: OrgSettingsFormProps) {
     mutationFn: (file: File) => organizationImagesApi.upload(orgId, file),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["org-images", orgId] }),
   });
+  const deleteImage = useMutation({
+    mutationFn: (imageId: string) => organizationImagesApi.delete(orgId, imageId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["org-images", orgId] });
+      toast.success("Photo removed");
+    },
+    onError: () => toast.error("Could not remove photo"),
+  });
   const [form, setForm] = useState<Partial<Organization>>({});
   const [location, setLocation] = useState<LocationValue | null>(null);
   const [defaultRent, setDefaultRent] = useState("");
+  const [slaFirstResponseHours, setSlaFirstResponseHours] = useState("");
+  const [slaResolutionHours, setSlaResolutionHours] = useState("");
+  const [billingMode, setBillingMode] = useState<Organization["billingMode"]>("OCCUPANCY_ANCHOR");
+  const [billingCustomDay, setBillingCustomDay] = useState("");
 
   useEffect(() => {
     if (org) {
@@ -52,6 +64,10 @@ export function OrgSettingsForm({ orgId }: OrgSettingsFormProps) {
         contactEmail: org.contactEmail ?? "",
       });
       setDefaultRent(org.defaultMonthlyRent != null ? String(org.defaultMonthlyRent) : "");
+      setSlaFirstResponseHours(String(org.slaFirstResponseHours ?? 24));
+      setSlaResolutionHours(String(org.slaResolutionHours ?? 72));
+      setBillingMode(org.billingMode ?? "OCCUPANCY_ANCHOR");
+      setBillingCustomDay(org.billingCustomDay != null ? String(org.billingCustomDay) : "");
       if (org.latitude != null && org.longitude != null) {
         setLocation({
           latitude: org.latitude,
@@ -71,8 +87,23 @@ export function OrgSettingsForm({ orgId }: OrgSettingsFormProps) {
 
   async function handleSave() {
     const rent = defaultRent.trim() ? Number(defaultRent) : undefined;
+    const firstResponse = slaFirstResponseHours.trim() ? Number(slaFirstResponseHours) : undefined;
+    const resolution = slaResolutionHours.trim() ? Number(slaResolutionHours) : undefined;
+    const customDay = billingCustomDay.trim() ? Number(billingCustomDay) : undefined;
     if (rent !== undefined && (Number.isNaN(rent) || rent < 0)) {
       toast.error("Enter a valid default monthly rent");
+      return;
+    }
+    if (firstResponse !== undefined && (Number.isNaN(firstResponse) || firstResponse <= 0)) {
+      toast.error("Enter a valid first-response SLA (hours)");
+      return;
+    }
+    if (resolution !== undefined && (Number.isNaN(resolution) || resolution <= 0)) {
+      toast.error("Enter a valid resolution SLA (hours)");
+      return;
+    }
+    if (customDay !== undefined && (Number.isNaN(customDay) || customDay < 1 || customDay > 28)) {
+      toast.error("Billing custom day must be between 1 and 28");
       return;
     }
     try {
@@ -89,6 +120,10 @@ export function OrgSettingsForm({ orgId }: OrgSettingsFormProps) {
         contactPhone: form.contactPhone || undefined,
         contactEmail: form.contactEmail || undefined,
         defaultMonthlyRent: rent,
+        slaFirstResponseHours: firstResponse,
+        slaResolutionHours: resolution,
+        billingMode,
+        billingCustomDay: customDay,
       });
       toast.success("Organization updated");
     } catch {
@@ -125,6 +160,29 @@ export function OrgSettingsForm({ orgId }: OrgSettingsFormProps) {
       )}
     </div>
   );
+
+  async function handlePhotosUpload(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    const files = Array.from(fileList);
+    let uploaded = 0;
+
+    for (const file of files) {
+      try {
+        await uploadImage.mutateAsync(file);
+        uploaded += 1;
+      } catch {
+        // continue with remaining files
+      }
+    }
+
+    if (uploaded === files.length) {
+      toast.success(uploaded === 1 ? "Photo uploaded" : `${uploaded} photos uploaded`);
+    } else if (uploaded > 0) {
+      toast.warning(`${uploaded} of ${files.length} photos uploaded`);
+    } else {
+      toast.error("Could not upload photos");
+    }
+  }
 
   const logoSrc = resolveMediaUrl(org.logoUrl);
 
@@ -165,33 +223,137 @@ export function OrgSettingsForm({ orgId }: OrgSettingsFormProps) {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Complaint SLA</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="slaFirstResponse">First response target (hours)</Label>
+            <Input
+              id="slaFirstResponse"
+              type="number"
+              min={0.01}
+              step={0.5}
+              value={slaFirstResponseHours}
+              onChange={(e) => setSlaFirstResponseHours(e.target.value)}
+              placeholder="24"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Maximum hours before staff must acknowledge a new complaint.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="slaResolution">Resolution target (hours)</Label>
+            <Input
+              id="slaResolution"
+              type="number"
+              min={0.01}
+              step={0.5}
+              value={slaResolutionHours}
+              onChange={(e) => setSlaResolutionHours(e.target.value)}
+              placeholder="72"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Maximum hours to resolve an open complaint.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {org.type === "GATED_COMMUNITY" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Billing cycle</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="billingMode">Billing mode</Label>
+              <select
+                id="billingMode"
+                className="mt-1 flex h-9 w-full rounded-lg border bg-background px-3 text-sm"
+                value={billingMode}
+                onChange={(e) =>
+                  setBillingMode(e.target.value as Organization["billingMode"])
+                }
+              >
+                <option value="CALENDAR_MONTH">Calendar month (fixed due day)</option>
+                <option value="OCCUPANCY_ANCHOR">Occupancy anchor (move-in anniversary)</option>
+                <option value="CUSTOM_DAY">Custom day each month</option>
+              </select>
+            </div>
+            {billingMode === "CUSTOM_DAY" && (
+              <div>
+                <Label htmlFor="billingCustomDay">Custom due day</Label>
+                <Input
+                  id="billingCustomDay"
+                  type="number"
+                  min={1}
+                  max={28}
+                  value={billingCustomDay}
+                  onChange={(e) => setBillingCustomDay(e.target.value)}
+                  placeholder="e.g. 15"
+                />
+              </div>
+            )}
+            <p className="sm:col-span-2 text-xs text-muted-foreground">
+              Controls when monthly maintenance charges are due. Maintenance amounts are configured
+              under Payments.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Property photos</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Upload photos of rooms, common areas, and amenities. They appear on your public explore
+            listing and organization profile for everyone browsing Dwellio.
+          </p>
           <Input
             type="file"
             accept="image/jpeg,image/png,image/webp"
+            multiple
+            disabled={uploadImage.isPending}
             onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              uploadImage.mutate(file, {
-                onSuccess: () => toast.success("Image uploaded"),
-                onError: () => toast.error("Could not upload image"),
-              });
+              void handlePhotosUpload(e.target.files);
+              e.target.value = "";
             }}
           />
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {images.map((img) => (
-              <div key={img.id} className="overflow-hidden rounded-lg border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.url.startsWith("http") ? img.url : `${apiConfig.baseUrl.replace(/\/api\/v1\/?$/, "")}${img.url}`}
-                  alt={img.caption ?? "Property"}
-                  className="aspect-video w-full object-cover"
-                />
-              </div>
-            ))}
-          </div>
+          {images.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {images.map((img) => {
+                const src = resolveMediaUrl(img.url);
+                if (!src) return null;
+                return (
+                  <div key={img.id} className="group relative overflow-hidden rounded-lg border">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={src}
+                      alt={img.caption ?? "Property"}
+                      className="aspect-video w-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="secondary"
+                      className="absolute right-2 top-2 size-8 opacity-0 transition-opacity group-hover:opacity-100"
+                      disabled={deleteImage.isPending}
+                      onClick={() => deleteImage.mutate(img.id)}
+                      aria-label="Remove photo"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+              No photos yet. Add a few to help residents discover your property.
+            </p>
+          )}
         </CardContent>
       </Card>
 

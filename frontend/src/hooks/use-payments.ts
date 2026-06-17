@@ -34,7 +34,13 @@ export function useRecordPayment(orgId: string | undefined) {
       body: Parameters<typeof paymentsApi.record>[2];
     }) => paymentsApi.record(orgId!, paymentId, body),
     onSettled: () => {
-      if (orgId) void queryClient.invalidateQueries({ queryKey: queryKeys.payments(orgId) });
+      if (orgId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.payments(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.revenue(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.ledger(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
+      }
     },
   });
 }
@@ -44,7 +50,13 @@ export function useCreateManualCharge(orgId: string | undefined) {
   return useMutation({
     mutationFn: (body: CreateManualChargeInput) => paymentsApi.createManual(orgId!, body),
     onSettled: () => {
-      if (orgId) void queryClient.invalidateQueries({ queryKey: queryKeys.payments(orgId) });
+      if (orgId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.payments(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.revenue(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.ledger(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
+      }
     },
   });
 }
@@ -54,7 +66,13 @@ export function useGenerateInvoice(orgId: string | undefined) {
   return useMutation({
     mutationFn: (paymentId: string) => paymentsApi.generateInvoice(orgId!, paymentId),
     onSettled: () => {
-      if (orgId) void queryClient.invalidateQueries({ queryKey: queryKeys.payments(orgId) });
+      if (orgId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.payments(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.revenue(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.ledger(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
+      }
     },
   });
 }
@@ -64,7 +82,13 @@ export function useShareInvoice(orgId: string | undefined) {
   return useMutation({
     mutationFn: (paymentId: string) => paymentsApi.shareInvoice(orgId!, paymentId),
     onSettled: () => {
-      if (orgId) void queryClient.invalidateQueries({ queryKey: queryKeys.payments(orgId) });
+      if (orgId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.payments(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.revenue(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.ledger(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
+      }
     },
   });
 }

@@ -25,6 +25,7 @@ export default function ResidentsPage() {
         >
           {orgId && <LeaveRequestsPanel orgId={orgId} />}
           <ResidentTable
+            orgSlug={orgSlug}
             residents={data}
             isLoading={isLoading}
             isError={isError}

@@ -364,8 +364,8 @@ public class DevDemoDataSeeder {
         try {
             jdbcTemplate.update(
                     """
-                    INSERT INTO organization_photos (id, organization_id, cloudinary_url, sort_order)
-                    VALUES (?, ?, ?, 0)
+                    INSERT INTO organization_images (id, organization_id, url, sort_order, created_at, updated_at)
+                    VALUES (?, ?, ?, 0, now(), now())
                     """,
                     UUID.randomUUID(),
                     organizationId,
@@ -373,8 +373,8 @@ public class DevDemoDataSeeder {
             );
             jdbcTemplate.update(
                     """
-                    INSERT INTO organization_photos (id, organization_id, cloudinary_url, sort_order)
-                    VALUES (?, ?, ?, 1)
+                    INSERT INTO organization_images (id, organization_id, url, sort_order, created_at, updated_at)
+                    VALUES (?, ?, ?, 1, now(), now())
                     """,
                     UUID.randomUUID(),
                     organizationId,
@@ -452,7 +452,8 @@ public class DevDemoDataSeeder {
                 bedA.id(),
                 null,
                 LocalDate.now(clock).minusDays(10),
-                new BigDecimal("8000")
+                new BigDecimal("8000"),
+                null
         ));
     }
 

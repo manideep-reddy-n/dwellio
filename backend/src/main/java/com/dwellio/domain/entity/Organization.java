@@ -2,6 +2,7 @@ package com.dwellio.domain.entity;
 
 import com.dwellio.common.entity.SoftDeletableEntity;
 import com.dwellio.domain.enums.AccommodationMode;
+import com.dwellio.domain.enums.BillingMode;
 import com.dwellio.domain.enums.HostelAudience;
 import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
@@ -107,4 +108,17 @@ public class Organization extends SoftDeletableEntity {
 
     @Column(name = "profile_completeness_score", nullable = false)
     private short profileCompletenessScore;
+
+    @Column(name = "sla_first_response_hours", nullable = false, precision = 8, scale = 2)
+    private BigDecimal slaFirstResponseHours = BigDecimal.valueOf(24);
+
+    @Column(name = "sla_resolution_hours", nullable = false, precision = 8, scale = 2)
+    private BigDecimal slaResolutionHours = BigDecimal.valueOf(72);
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "billing_mode", nullable = false, length = 30)
+    private BillingMode billingMode = BillingMode.OCCUPANCY_ANCHOR;
+
+    @Column(name = "billing_custom_day")
+    private Short billingCustomDay;
 }

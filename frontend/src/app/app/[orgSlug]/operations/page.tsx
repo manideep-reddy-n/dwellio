@@ -1,10 +1,8 @@
 "use client";
 
 import { PageTransition } from "@/components/shared/page-transition";
-import { MetricsCharts } from "@/components/operations/metrics-charts";
+import { ConsolidatedOpsDashboard } from "@/components/operations/consolidated-ops-dashboard";
 import { PageTitle } from "@/components/shared/page-title";
-import { MetricsDashboard } from "@/components/operations/metrics-dashboard";
-import { OrgTrustPanel } from "@/components/operations/org-trust-panel";
 import { OwnerHomeHero } from "@/components/operations/owner-home-hero";
 import { SuspensionAlert } from "@/components/operations/suspension-alert";
 import { TodayMenuCard } from "@/components/food-menu/today-menu-card";
@@ -51,7 +49,7 @@ export default function OperationsDashboardPage() {
 
           <OperationsShell
             orgSlug={orgSlug}
-            title="Analytics dashboard"
+            title="Operations dashboard"
             description={ownerHomeQuotes.description}
             actions={
               <Button
@@ -69,21 +67,15 @@ export default function OperationsDashboardPage() {
               </Button>
             }
           >
-            <MetricsDashboard
+            <ConsolidatedOpsDashboard
               metrics={data}
+              orgSlug={orgSlug}
+              orgType={org?.type}
+              orgVerified={org?.status === "VERIFIED"}
               isLoading={isLoading}
               isError={isError}
               onRetry={() => void refetch()}
             />
-            {data && <MetricsCharts metrics={data} />}
-          </OperationsShell>
-
-          <OperationsShell
-            orgSlug={orgSlug}
-            title="Trust score"
-            description="How residents and the marketplace see your property's service quality."
-          >
-            <OrgTrustPanel orgSlug={orgSlug} />
           </OperationsShell>
         </div>
       </OpsGuard>

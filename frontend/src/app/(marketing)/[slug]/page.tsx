@@ -3,6 +3,7 @@ import { MapPin } from "lucide-react";
 import { OrganizationLogo } from "@/components/shared/organization-logo";
 import { MetricsStrip } from "@/components/marketplace/metrics-strip";
 import { MemberJoinBanner } from "@/components/marketplace/member-join-banner";
+import { OrgPhotoGallery } from "@/components/marketplace/org-photo-gallery";
 import { OrgProfileActionsGated } from "@/components/marketplace/org-profile-actions-gated";
 import { OrgProfileLocationMap } from "@/components/marketplace/org-profile-location-map";
 import { ReviewList } from "@/components/marketplace/review-list";
@@ -105,6 +106,10 @@ export default async function OrgProfilePage({ params }: OrgProfilePageProps) {
             </div>
           )}
         </div>
+
+        {org.photos && org.photos.length > 0 && (
+          <OrgPhotoGallery photos={org.photos} className="mt-10" />
+        )}
 
         <Separator className="my-10" />
 

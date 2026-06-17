@@ -43,13 +43,15 @@ const primaryItems = [
   },
   {
     href: (slug: string) => `/app/${slug}/resident/complaints`,
-    label: "Issues",
+    label: "Complaints",
     icon: MessageSquareWarning,
     exact: false as const,
   },
 ] as const;
 
 const moreItems = (orgSlug: string) => [
+  { href: `/app/${orgSlug}/resident/timeline`, label: "Timeline" },
+  { href: `/app/${orgSlug}/resident/ledger`, label: "Ledger" },
   { href: `/app/${orgSlug}/resident/announcements`, label: "Announcements" },
   { href: `/app/${orgSlug}/resident/payments`, label: "Payments" },
   { href: `/app/${orgSlug}/resident/review`, label: "Leave a review" },

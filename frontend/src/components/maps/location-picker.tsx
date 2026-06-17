@@ -121,7 +121,7 @@ export function LocationPicker({ value, onChange, onAddressFields }: LocationPic
 
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <MapPin className="size-3.5" />
-          Drag the pin, click the map, search places, or use your current location.
+          Drag the pin, click the map, or search places. Hold Ctrl to zoom and pan the map.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">

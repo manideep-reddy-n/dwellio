@@ -6,6 +6,7 @@ import com.dwellio.metrics.dto.ComplaintCategoryCount;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record OrganizationMetricsResponse(
@@ -35,6 +36,27 @@ public record OrganizationMetricsResponse(
         Integer occupiedUnits,
         Integer blockedUnits,
         BigDecimal occupancyRate,
+        BigDecimal expectedRevenueMonth,
+        BigDecimal collectedRevenueMonth,
+        BigDecimal outstandingRevenueMonth,
+        BigDecimal collectionRate,
+        int defaultersCount,
+        List<Map<String, Object>> revenueTrend,
+        BigDecimal forecastRevenueNextMonth,
+        int moveInsMonth,
+        int moveOutsMonth,
+        BigDecimal avgStayDays,
+        BigDecimal turnoverRate,
+        int pendingPaymentsCount,
+        BigDecimal slaFirstResponseHours,
+        BigDecimal slaResolutionHours,
+        BigDecimal slaComplianceRate,
+        int slaViolationsCount,
+        int reopenedComplaintsCount,
+        BigDecimal avgBreakfastRating,
+        BigDecimal avgLunchRating,
+        BigDecimal avgDinnerRating,
+        List<Map<String, Object>> mealRatingsTrend,
         Instant refreshedAt
 ) {
     public static OrganizationMetricsResponse from(OrganizationMetricsCache cache) {
@@ -65,6 +87,27 @@ public record OrganizationMetricsResponse(
                 cache.getOccupiedUnits(),
                 cache.getBlockedUnits(),
                 computeOccupancyRate(cache),
+                cache.getExpectedRevenueMonth(),
+                cache.getCollectedRevenueMonth(),
+                cache.getOutstandingRevenueMonth(),
+                cache.getCollectionRate(),
+                cache.getDefaultersCount(),
+                cache.getRevenueTrendJson(),
+                cache.getForecastRevenueNextMonth(),
+                cache.getMoveInsMonth(),
+                cache.getMoveOutsMonth(),
+                cache.getAvgStayDays(),
+                cache.getTurnoverRate(),
+                cache.getPendingPaymentsCount(),
+                cache.getSlaFirstResponseHours(),
+                cache.getSlaResolutionHours(),
+                cache.getSlaComplianceRate(),
+                cache.getSlaViolationsCount(),
+                cache.getReopenedComplaintsCount(),
+                cache.getAvgBreakfastRating(),
+                cache.getAvgLunchRating(),
+                cache.getAvgDinnerRating(),
+                cache.getMealRatingsTrendJson(),
                 cache.getRefreshedAt()
         );
     }

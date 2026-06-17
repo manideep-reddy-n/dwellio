@@ -44,6 +44,21 @@ public class OccupancyController {
         return occupancyService.getMine(organizationId);
     }
 
+    @GetMapping("/history")
+    @PreAuthorize("@authz.hasPermission(#organizationId, 'resident:manage')")
+    public List<OccupancyResponse> listHistory(
+            @PathVariable UUID organizationId,
+            @RequestParam(required = false) UUID membershipId
+    ) {
+        return occupancyService.listHistory(organizationId, membershipId);
+    }
+
+    @GetMapping("/history/mine")
+    @PreAuthorize("@authz.hasPermission(#organizationId, 'allocation:read_own')")
+    public List<OccupancyResponse> listMyHistory(@PathVariable UUID organizationId) {
+        return occupancyService.listMyHistory(organizationId);
+    }
+
     @PostMapping("/allocate")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("@authz.hasPermission(#organizationId, 'resident:manage')")

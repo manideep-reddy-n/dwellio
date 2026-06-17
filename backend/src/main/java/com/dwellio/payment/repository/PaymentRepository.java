@@ -24,6 +24,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     @Query("""
             SELECT p FROM Payment p
+            JOIN FETCH p.membership m
+            JOIN FETCH m.user
             WHERE p.organization.id = :organizationId
               AND p.membership.id = :membershipId
               AND p.deletedAt IS NULL
@@ -38,6 +40,13 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     Optional<Payment> findByMembershipIdAndBillingMonthAndChargeTypeAndDeletedAtIsNull(
             UUID membershipId,
+            LocalDate billingMonth,
+            ChargeType chargeType
+    );
+
+    Optional<Payment> findByOrganizationIdAndUnitSpaceIdAndBillingMonthAndChargeTypeAndDeletedAtIsNull(
+            UUID organizationId,
+            UUID unitSpaceId,
             LocalDate billingMonth,
             ChargeType chargeType
     );

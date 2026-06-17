@@ -8,6 +8,7 @@ import type { OrganizationType } from "@/types/enums";
 import { DEFAULT_MAP_CENTER, orgTypeMarkerColors } from "@/lib/maps/geocoding";
 import { orgTypeLabels } from "@/lib/marketplace/format";
 import { GOOGLE_MAP_ID } from "@/lib/maps/config";
+import { cn } from "@/lib/utils";
 
 function MapPin({ color, selected }: { color: string; selected?: boolean }) {
   return (
@@ -49,6 +50,20 @@ function FitMapBounds({ markers }: { markers: Array<{ lat: number; lng: number }
   return null;
 }
 
+function CtrlMapHint({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-x-0 top-0 z-10 bg-background/80 px-3 py-2 text-center text-xs text-muted-foreground backdrop-blur-sm",
+        className,
+      )}
+    >
+      Hold <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">Ctrl</kbd> to
+      zoom and pan the map
+    </div>
+  );
+}
+
 function useCtrlMapGestures() {
   const [ctrlHeld, setCtrlHeld] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -87,18 +102,20 @@ interface LocationPickerMapProps {
 
 export function LocationPickerMap({ lat, lng, onChange, height = 280 }: LocationPickerMapProps) {
   const [position, setPosition] = useState({ lat, lng });
+  const { gestureHandling, showHint } = useCtrlMapGestures();
 
   useEffect(() => {
     setPosition({ lat, lng });
   }, [lat, lng]);
 
   return (
-    <div className="overflow-hidden rounded-xl border" style={{ height }}>
+    <div className="relative overflow-hidden rounded-xl border" style={{ height }}>
+      {showHint && <CtrlMapHint />}
       <Map
         mapId={GOOGLE_MAP_ID}
         defaultCenter={position}
         defaultZoom={15}
-        gestureHandling="greedy"
+        gestureHandling={gestureHandling}
         style={{ width: "100%", height: "100%" }}
         onClick={(event) => {
           const latLng = event.detail.latLng;
@@ -161,12 +178,7 @@ export function ExploreMarkersMap({ markers, height = 420 }: ExploreMarkersMapPr
 
   return (
     <div className="relative overflow-hidden rounded-xl border" style={{ height }}>
-      {showHint && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-background/80 px-3 py-2 text-center text-xs text-muted-foreground backdrop-blur-sm">
-          Hold <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">Ctrl</kbd> to pan
-          and zoom the map
-        </div>
-      )}
+      {showHint && <CtrlMapHint />}
       <Map
         mapId={GOOGLE_MAP_ID}
         defaultCenter={center}
@@ -229,13 +241,16 @@ interface OrgLocationMapProps {
 }
 
 export function OrgLocationMap({ lat, lng, height = 240 }: OrgLocationMapProps) {
+  const { gestureHandling, showHint } = useCtrlMapGestures();
+
   return (
-    <div className="overflow-hidden rounded-xl border" style={{ height }}>
+    <div className="relative overflow-hidden rounded-xl border" style={{ height }}>
+      {showHint && <CtrlMapHint />}
       <Map
         mapId={GOOGLE_MAP_ID}
         defaultCenter={{ lat, lng }}
         defaultZoom={15}
-        gestureHandling="cooperative"
+        gestureHandling={gestureHandling}
         disableDefaultUI={false}
         style={{ width: "100%", height: "100%" }}
       >

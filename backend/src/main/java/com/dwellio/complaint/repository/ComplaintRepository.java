@@ -13,6 +13,7 @@ public interface ComplaintRepository extends JpaRepository<Complaint, UUID> {
 
     @Query("""
             SELECT c FROM Complaint c
+            JOIN FETCH c.createdByMembership
             WHERE c.organization.id = :organizationId
               AND c.deletedAt IS NULL
               AND (:category IS NULL OR c.category = :category)

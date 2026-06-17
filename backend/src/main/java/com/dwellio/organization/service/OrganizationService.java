@@ -18,6 +18,7 @@ import com.dwellio.domain.entity.User;
 import com.dwellio.domain.enums.AccommodationMode;
 import com.dwellio.domain.enums.HostelAudience;
 import com.dwellio.domain.enums.MembershipStatus;
+import com.dwellio.domain.enums.BillingMode;
 import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
 import com.dwellio.domain.enums.OrganizationTypeMapping;
@@ -32,6 +33,8 @@ import com.dwellio.role.repository.PermissionRepository;
 import com.dwellio.role.repository.RolePermissionRepository;
 import com.dwellio.role.repository.RoleRepository;
 import com.dwellio.membership.repository.MembershipRepository;
+import com.dwellio.billing.service.BillingRuleService;
+import com.dwellio.metrics.service.MetricsProjectionService;
 import java.time.Clock;
 import java.time.Instant;
 import java.math.BigDecimal;
@@ -52,6 +55,8 @@ public class OrganizationService {
     private final RolePermissionRepository rolePermissionRepository;
     private final MembershipRepository membershipRepository;
     private final OrganizationMetricsCacheRepository metricsCacheRepository;
+    private final MetricsProjectionService metricsProjectionService;
+    private final BillingRuleService billingRuleService;
     private final UserRepository userRepository;
     private final Clock clock;
 
@@ -89,6 +94,9 @@ public class OrganizationService {
         organization.setContactEmail(request.contactEmail());
         applyCoordinates(organization, request.latitude(), request.longitude());
         organization.setProfileCompletenessScore((short) 0);
+        organization = organizationRepository.save(organization);
+
+        billingRuleService.seedDefaults(organization);
         organization = organizationRepository.save(organization);
 
         Role ownerRole = seedSystemRole(organization, RoleConstants.OWNER, true);
@@ -153,7 +161,32 @@ public class OrganizationService {
         if (request.defaultMonthlyRent() != null) {
             organization.setDefaultMonthlyRent(request.defaultMonthlyRent());
         }
-        return toResponse(organization);
+        boolean slaChanged = false;
+        if (request.slaFirstResponseHours() != null) {
+            organization.setSlaFirstResponseHours(request.slaFirstResponseHours());
+            slaChanged = true;
+        }
+        if (request.slaResolutionHours() != null) {
+            organization.setSlaResolutionHours(request.slaResolutionHours());
+            slaChanged = true;
+        }
+        boolean billingChanged = false;
+        if (request.billingMode() != null) {
+            organization.setBillingMode(request.billingMode());
+            billingChanged = true;
+        }
+        if (request.billingCustomDay() != null) {
+            organization.setBillingCustomDay(request.billingCustomDay());
+            billingChanged = true;
+        }
+        OrganizationResponse response = toResponse(organization);
+        if (slaChanged) {
+            metricsProjectionService.refreshComplaintMetrics(organizationId);
+        }
+        if (billingChanged) {
+            metricsProjectionService.refreshRevenueMetrics(organizationId);
+        }
+        return response;
     }
 
     @Transactional
@@ -228,7 +261,11 @@ public class OrganizationService {
                 organization.getContactEmail(),
                 organization.getPlan().getCode().name(),
                 organization.getDefaultMonthlyRent(),
-                organization.getLogoUrl()
+                organization.getLogoUrl(),
+                organization.getSlaFirstResponseHours(),
+                organization.getSlaResolutionHours(),
+                organization.getBillingMode(),
+                organization.getBillingCustomDay()
         );
     }
 

@@ -30,6 +30,7 @@ export interface Complaint {
   createdAt: string;
   updatedAt: string;
   attachments: ComplaintAttachment[];
+  slaBreached?: boolean;
 }
 
 export interface CreateComplaintInput {

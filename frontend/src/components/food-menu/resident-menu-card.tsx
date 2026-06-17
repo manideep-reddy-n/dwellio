@@ -4,13 +4,14 @@ import { UtensilsCrossed } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { foodMenuApi, type FoodMenuDay, type MealType } from "@/lib/api/food-menu";
+import { MealFeedbackPanel } from "@/components/food-menu/meal-feedback-panel";
+import { supportsFoodMenu } from "@/lib/food-menu/org-support";
 import { queryKeys } from "@/lib/query/keys";
 import { useAuthReady } from "@/hooks/use-auth-ready";
 import { cn } from "@/lib/utils";
 import type { OrganizationType } from "@/types/enums";
 
 const MEALS: MealType[] = ["BREAKFAST", "LUNCH", "DINNER"];
-const FOOD_ORG_TYPES: OrganizationType[] = ["HOSTEL", "PG"];
 
 const mealLabels: Record<MealType, string> = {
   BREAKFAST: "Breakfast",
@@ -29,21 +30,20 @@ interface ResidentMenuCardProps {
 
 export function ResidentMenuCard({ orgId, organizationType }: ResidentMenuCardProps) {
   const { authReady } = useAuthReady();
-  const supportsFoodMenu =
-    organizationType != null && FOOD_ORG_TYPES.includes(organizationType);
+  const supportsFoodMenuType = supportsFoodMenu(organizationType);
   const { data: today, isLoading: todayLoading } = useQuery({
     queryKey: orgId ? [...queryKeys.foodMenu(orgId), "today"] : ["food-menu", "disabled"],
     queryFn: () => foodMenuApi.today(orgId!),
-    enabled: authReady && Boolean(orgId) && supportsFoodMenu,
+    enabled: authReady && Boolean(orgId) && supportsFoodMenuType,
   });
 
   const { data: weekly = [], isLoading: weeklyLoading } = useQuery({
     queryKey: orgId ? [...queryKeys.foodMenu(orgId), "weekly"] : ["food-menu", "disabled"],
     queryFn: () => foodMenuApi.weekly(orgId!),
-    enabled: authReady && Boolean(orgId) && supportsFoodMenu,
+    enabled: authReady && Boolean(orgId) && supportsFoodMenuType,
   });
 
-  if (!orgId || !supportsFoodMenu) return null;
+  if (!orgId || !supportsFoodMenuType) return null;
   if (todayLoading || weeklyLoading) return <Skeleton className="h-72 w-full rounded-2xl" />;
 
   const todayHasItems = today?.meals.some((m) => m.items.trim().length > 0) ?? false;
@@ -86,6 +86,11 @@ export function ResidentMenuCard({ orgId, organizationType }: ResidentMenuCardPr
                     Chef&apos;s special
                   </span>
                 )}
+                <MealFeedbackPanel
+                  orgId={orgId}
+                  mealType={meal.mealType}
+                  hasMenuItems={meal.items.trim().length > 0}
+                />
               </div>
             ))}
           </div>

@@ -25,6 +25,10 @@ export interface Organization {
   contactEmail: string | null;
   defaultMonthlyRent: number | null;
   logoUrl: string | null;
+  slaFirstResponseHours: number;
+  slaResolutionHours: number;
+  billingMode: "CALENDAR_MONTH" | "OCCUPANCY_ANCHOR" | "CUSTOM_DAY";
+  billingCustomDay: number | null;
   profileCompletenessScore: number;
   createdAt: string;
   updatedAt: string;
@@ -61,4 +65,8 @@ export interface UpdateOrganizationInput {
   contactPhone?: string;
   contactEmail?: string;
   defaultMonthlyRent?: number;
+  slaFirstResponseHours?: number;
+  slaResolutionHours?: number;
+  billingMode?: "CALENDAR_MONTH" | "OCCUPANCY_ANCHOR" | "CUSTOM_DAY";
+  billingCustomDay?: number;
 }

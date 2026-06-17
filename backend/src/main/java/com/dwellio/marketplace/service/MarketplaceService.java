@@ -2,19 +2,25 @@ package com.dwellio.marketplace.service;
 
 import com.dwellio.common.exception.NotFoundException;
 import com.dwellio.domain.entity.Organization;
+import com.dwellio.domain.entity.OrganizationImage;
 import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
 import com.dwellio.marketplace.dto.PublicAmenityResponse;
+import com.dwellio.marketplace.dto.PublicOrganizationImageResponse;
 import com.dwellio.marketplace.dto.PublicOrganizationResponse;
 import com.dwellio.marketplace.dto.PublicOrganizationSummaryResponse;
 import com.dwellio.marketplace.dto.PublicReviewResponse;
 import com.dwellio.metrics.service.MetricsProjectionService;
 import com.dwellio.organization.repository.OrganizationAmenityRepository;
+import com.dwellio.organization.repository.OrganizationImageRepository;
 import com.dwellio.organization.repository.OrganizationMetricsCacheRepository;
 import com.dwellio.organization.repository.OrganizationRepository;
 import com.dwellio.organization.service.OrganizationService;
 import com.dwellio.review.repository.ReviewRepository;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +37,7 @@ public class MarketplaceService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationMetricsCacheRepository metricsCacheRepository;
     private final OrganizationAmenityRepository organizationAmenityRepository;
+    private final OrganizationImageRepository organizationImageRepository;
     private final MetricsProjectionService metricsProjectionService;
     private final ReviewRepository reviewRepository;
 
@@ -43,14 +50,22 @@ public class MarketplaceService {
         String normalizedCity = emptyIfBlank(city);
         String normalizedQuery = emptyIfBlank(query);
 
-        return organizationRepository.searchMarketplace(
+        List<Organization> organizations = organizationRepository.searchMarketplace(
                         OrganizationStatus.VERIFIED,
                         normalizedCity,
                         type,
                         normalizedQuery
                 ).stream()
                 .limit(MAX_LIST_SIZE)
-                .map(this::toSummary)
+                .toList();
+
+        Map<UUID, List<PublicOrganizationImageResponse>> photosByOrg =
+                loadPhotosByOrganization(organizations.stream().map(Organization::getId).toList());
+
+        return organizations.stream()
+                .map(organization -> toSummary(
+                        organization,
+                        photosByOrg.getOrDefault(organization.getId(), List.of())))
                 .toList();
     }
 
@@ -67,13 +82,20 @@ public class MarketplaceService {
         return PublicOrganizationResponse.from(
                 organization,
                 cache,
-                listAmenities(organization.getId())
+                listAmenities(organization.getId()),
+                listPhotos(organization.getId())
         );
     }
 
     private List<PublicAmenityResponse> listAmenities(UUID organizationId) {
         return organizationAmenityRepository.findAmenitiesByOrganizationId(organizationId).stream()
                 .map(amenity -> new PublicAmenityResponse(amenity.getName(), amenity.getIcon()))
+                .toList();
+    }
+
+    private List<PublicOrganizationImageResponse> listPhotos(UUID organizationId) {
+        return organizationImageRepository.findAllActiveByOrganizationId(organizationId).stream()
+                .map(PublicOrganizationImageResponse::from)
                 .toList();
     }
 
@@ -90,22 +112,32 @@ public class MarketplaceService {
                 .toList();
     }
 
-    private PublicOrganizationSummaryResponse toSummary(Organization organization) {
+    private PublicOrganizationSummaryResponse toSummary(
+            Organization organization,
+            List<PublicOrganizationImageResponse> photos
+    ) {
         return metricsCacheRepository.findById(organization.getId())
-                .map(cache -> PublicOrganizationSummaryResponse.from(organization, cache))
-                .orElseGet(() -> PublicOrganizationSummaryResponse.fromOrganization(organization));
+                .map(cache -> PublicOrganizationSummaryResponse.from(organization, cache, photos))
+                .orElseGet(() -> PublicOrganizationSummaryResponse.fromOrganization(organization, photos));
+    }
+
+    private Map<UUID, List<PublicOrganizationImageResponse>> loadPhotosByOrganization(List<UUID> organizationIds) {
+        if (organizationIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, List<PublicOrganizationImageResponse>> photosByOrg = new HashMap<>();
+        for (OrganizationImage image : organizationImageRepository.findAllActiveByOrganizationIdIn(organizationIds)) {
+            photosByOrg
+                    .computeIfAbsent(image.getOrganization().getId(), ignored -> new ArrayList<>())
+                    .add(PublicOrganizationImageResponse.from(image));
+        }
+        return photosByOrg;
     }
 
     private static String emptyIfBlank(String value) {
         if (value == null || value.isBlank()) {
             return "";
-        }
-        return value.trim();
-    }
-
-    private static String blankToNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
         }
         return value.trim();
     }

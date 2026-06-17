@@ -142,6 +142,20 @@ export const occupanciesApi = {
   getMine: (orgId: string) =>
     apiRequest<StaffOccupancy>(apiConfig.baseUrl, `/organizations/${orgId}/occupancies/mine`),
 
+  listHistory: (orgId: string, membershipId?: string) => {
+    const params = membershipId ? `?membershipId=${membershipId}` : "";
+    return apiRequest<StaffOccupancy[]>(
+      apiConfig.baseUrl,
+      `/organizations/${orgId}/occupancies/history${params}`,
+    );
+  },
+
+  listMyHistory: (orgId: string) =>
+    apiRequest<StaffOccupancy[]>(
+      apiConfig.baseUrl,
+      `/organizations/${orgId}/occupancies/history/mine`,
+    ),
+
   allocate: (
     orgId: string,
     body: {
@@ -150,6 +164,7 @@ export const occupanciesApi = {
       unitSpaceId?: string;
       moveInDate: string;
       monthlyRent?: number;
+      occupancyClassification?: "RESIDENT" | "OWNER_OCCUPIED" | "TENANT_OCCUPIED";
     },
   ) =>
     apiRequest<StaffOccupancy>(apiConfig.baseUrl, `/organizations/${orgId}/occupancies/allocate`, {
@@ -176,5 +191,12 @@ export const occupanciesApi = {
       apiConfig.baseUrl,
       `/organizations/${orgId}/occupancies/${occupancyId}/release`,
       { method: "POST", body: { moveOutDate } },
+    ),
+
+  updateRent: (orgId: string, occupancyId: string, monthlyRent: number) =>
+    apiRequest<StaffOccupancy>(
+      apiConfig.baseUrl,
+      `/organizations/${orgId}/occupancies/${occupancyId}/rent`,
+      { method: "PATCH", body: { monthlyRent } },
     ),
 };

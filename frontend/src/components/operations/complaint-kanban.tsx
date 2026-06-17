@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ComplaintStatusBadge } from "@/components/resident/complaint-status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -43,6 +44,7 @@ interface ComplaintKanbanProps {
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
+  highlightSlaBreach?: boolean;
 }
 
 export function ComplaintKanban({
@@ -51,6 +53,7 @@ export function ComplaintKanban({
   isLoading,
   isError,
   onRetry,
+  highlightSlaBreach = false,
 }: ComplaintKanbanProps) {
   const { can, isOwner } = usePermissions();
   const { assign, start, resolve, close, reopen } = useComplaintWorkflow(orgId);
@@ -116,11 +119,25 @@ export function ComplaintKanban({
                     exit={{ opacity: 0, scale: 0.96 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <Card className="shadow-sm">
+                    <Card
+                      className={
+                        highlightSlaBreach && complaint.slaBreached
+                          ? "border-amber-400 shadow-sm ring-1 ring-amber-200 dark:border-amber-700 dark:ring-amber-900/50"
+                          : "shadow-sm"
+                      }
+                    >
                       <CardHeader className="space-y-1 p-3 pb-2">
                         <div className="flex items-start justify-between gap-2">
                           <CardTitle className="text-sm leading-snug">{complaint.title}</CardTitle>
-                          <ComplaintStatusBadge status={complaint.status} />
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <ComplaintStatusBadge status={complaint.status} />
+                            {highlightSlaBreach && complaint.slaBreached && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                                <AlertTriangle className="size-3" />
+                                SLA breach
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {complaintCategoryLabels[complaint.category]} ·{" "}

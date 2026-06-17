@@ -1,6 +1,7 @@
 package com.dwellio.organization.dto;
 
 import com.dwellio.domain.enums.AccommodationMode;
+import com.dwellio.domain.enums.BillingMode;
 import com.dwellio.domain.enums.HostelAudience;
 import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
@@ -27,6 +28,10 @@ public record OrganizationResponse(
         String contactEmail,
         String planCode,
         BigDecimal defaultMonthlyRent,
-        String logoUrl
+        String logoUrl,
+        BigDecimal slaFirstResponseHours,
+        BigDecimal slaResolutionHours,
+        BillingMode billingMode,
+        Short billingCustomDay
 ) {
 }

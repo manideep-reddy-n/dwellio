@@ -7,6 +7,7 @@ import com.dwellio.domain.enums.HostelAudience;
 import com.dwellio.domain.enums.OrganizationStatus;
 import com.dwellio.domain.enums.OrganizationType;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record PublicOrganizationSummaryResponse(
@@ -23,12 +24,16 @@ public record PublicOrganizationSummaryResponse(
         BigDecimal longitude,
         String logoUrl,
         boolean verified,
-        PublicOrganizationMetrics metrics
+        PublicOrganizationMetrics metrics,
+        String coverPhotoUrl,
+        List<PublicOrganizationImageResponse> photos
 ) {
     public static PublicOrganizationSummaryResponse from(
             Organization organization,
-            OrganizationMetricsCache cache
+            OrganizationMetricsCache cache,
+            List<PublicOrganizationImageResponse> photos
     ) {
+        String coverPhotoUrl = photos.isEmpty() ? null : photos.get(0).url();
         return new PublicOrganizationSummaryResponse(
                 organization.getId(),
                 organization.getSlug(),
@@ -43,11 +48,17 @@ public record PublicOrganizationSummaryResponse(
                 organization.getLongitude(),
                 organization.getLogoUrl(),
                 organization.getStatus() == OrganizationStatus.VERIFIED,
-                PublicOrganizationMetrics.from(cache)
+                PublicOrganizationMetrics.from(cache),
+                coverPhotoUrl,
+                photos
         );
     }
 
-    public static PublicOrganizationSummaryResponse fromOrganization(Organization organization) {
+    public static PublicOrganizationSummaryResponse fromOrganization(
+            Organization organization,
+            List<PublicOrganizationImageResponse> photos
+    ) {
+        String coverPhotoUrl = photos.isEmpty() ? null : photos.get(0).url();
         return new PublicOrganizationSummaryResponse(
                 organization.getId(),
                 organization.getSlug(),
@@ -62,7 +73,9 @@ public record PublicOrganizationSummaryResponse(
                 organization.getLongitude(),
                 organization.getLogoUrl(),
                 organization.getStatus() == OrganizationStatus.VERIFIED,
-                PublicOrganizationMetrics.empty()
+                PublicOrganizationMetrics.empty(),
+                coverPhotoUrl,
+                photos
         );
     }
 

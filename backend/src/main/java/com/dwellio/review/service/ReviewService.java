@@ -10,6 +10,9 @@ import com.dwellio.domain.entity.Membership;
 import com.dwellio.domain.entity.Organization;
 import com.dwellio.domain.entity.Review;
 import com.dwellio.domain.entity.ReviewReport;
+import com.dwellio.activity.ActivityEventTypes;
+import com.dwellio.activity.service.ActivityEventRecorder;
+import com.dwellio.domain.enums.ActivityEventCategory;
 import com.dwellio.domain.entity.User;
 import com.dwellio.domain.enums.ReviewReportStatus;
 import com.dwellio.membership.repository.MembershipRepository;
@@ -26,7 +29,9 @@ import com.dwellio.review.repository.ReviewRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +40,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ReviewService {
+
+    private static final String SOURCE_REVIEW = "REVIEW";
 
     private static final int MIN_MEMBERSHIP_DAYS = 7;
 
@@ -46,6 +53,7 @@ public class ReviewService {
     private final AuthorizationService authorizationService;
     private final ReviewEventPublisher eventPublisher;
     private final AfterCommitEventPublisher afterCommitEventPublisher;
+    private final ActivityEventRecorder activityEventRecorder;
     private final Clock clock;
 
     @Transactional
@@ -67,6 +75,15 @@ public class ReviewService {
         review.setBody(normalizeBody(request.body()));
         review = reviewRepository.save(review);
 
+        recordReviewEvent(
+                organizationId,
+                membership.getId(),
+                review,
+                ActivityEventTypes.REVIEW_SUBMITTED,
+                "Review submitted",
+                review.getCreatedAt(),
+                "SUBMITTED"
+        );
         publishMetrics(organizationId);
         return ReviewResponse.from(review);
     }
@@ -82,7 +99,17 @@ public class ReviewService {
 
         review.setRating(request.rating());
         review.setBody(normalizeBody(request.body()));
+        review = reviewRepository.save(review);
 
+        recordReviewEvent(
+                organizationId,
+                review.getMembership().getId(),
+                review,
+                ActivityEventTypes.REVIEW_UPDATED,
+                "Review updated",
+                review.getUpdatedAt(),
+                "UPDATED"
+        );
         publishMetrics(organizationId);
         return ReviewResponse.from(review);
     }
@@ -158,5 +185,35 @@ public class ReviewService {
 
     private void publishMetrics(UUID organizationId) {
         eventPublisher.publishMetricsChanged(organizationId);
+    }
+
+    private void recordReviewEvent(
+            UUID organizationId,
+            UUID membershipId,
+            Review review,
+            String eventType,
+            String title,
+            Instant occurredAt,
+            String sourceSuffix
+    ) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("reviewId", review.getId().toString());
+        metadata.put("rating", review.getRating());
+        activityEventRecorder.record(
+                organizationId,
+                membershipId,
+                ActivityEventCategory.REVIEW,
+                eventType,
+                title,
+                review.getRating() + " star review",
+                metadata,
+                occurredAt,
+                SOURCE_REVIEW,
+                reviewSourceId(review.getId(), sourceSuffix)
+        );
+    }
+
+    private static UUID reviewSourceId(UUID reviewId, String suffix) {
+        return UUID.nameUUIDFromBytes((reviewId.toString() + ":" + suffix).getBytes());
     }
 }

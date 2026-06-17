@@ -1,5 +1,6 @@
 package com.dwellio.occupancy.dto;
 
+import com.dwellio.domain.enums.OccupancyClassification;
 import com.dwellio.domain.enums.OccupancyTarget;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,6 +19,7 @@ public record OccupancyResponse(
         LocalDate moveInDate,
         LocalDate moveOutDate,
         boolean current,
-        BigDecimal monthlyRent
+        BigDecimal monthlyRent,
+        OccupancyClassification occupancyClassification
 ) {
 }

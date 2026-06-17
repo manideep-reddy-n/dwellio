@@ -26,9 +26,18 @@ public record ComplaintResponse(
         Instant firstResponseAt,
         Instant createdAt,
         Instant updatedAt,
-        List<ComplaintAttachmentResponse> attachments
+        List<ComplaintAttachmentResponse> attachments,
+        Boolean slaBreached
 ) {
     public static ComplaintResponse from(Complaint complaint, List<ComplaintAttachment> attachments) {
+        return from(complaint, attachments, null);
+    }
+
+    public static ComplaintResponse from(
+            Complaint complaint,
+            List<ComplaintAttachment> attachments,
+            Boolean slaBreached
+    ) {
         return new ComplaintResponse(
                 complaint.getId(),
                 complaint.getOrganization().getId(),
@@ -46,7 +55,8 @@ public record ComplaintResponse(
                 complaint.getFirstResponseAt(),
                 complaint.getCreatedAt(),
                 complaint.getUpdatedAt(),
-                attachments.stream().map(ComplaintAttachmentResponse::from).toList()
+                attachments.stream().map(ComplaintAttachmentResponse::from).toList(),
+                slaBreached
         );
     }
 }

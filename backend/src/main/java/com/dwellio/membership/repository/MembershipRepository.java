@@ -88,6 +88,19 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
 
     @Query("""
             SELECT m FROM Membership m
+            JOIN FETCH m.role r
+            JOIN FETCH m.user u
+            WHERE m.id = :membershipId
+              AND m.organization.id = :organizationId
+              AND m.deletedAt IS NULL
+            """)
+    Optional<Membership> findByIdAndOrganizationId(
+            @Param("membershipId") UUID membershipId,
+            @Param("organizationId") UUID organizationId
+    );
+
+    @Query("""
+            SELECT m FROM Membership m
             JOIN FETCH m.user u
             JOIN FETCH m.role r
             WHERE m.organization.id = :organizationId
@@ -156,4 +169,14 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
               )
             """)
     List<Membership> findActiveComplaintStaffByOrganizationId(@Param("organizationId") UUID organizationId);
+
+    @Query("""
+            SELECT m FROM Membership m
+            JOIN FETCH m.user u
+            JOIN FETCH m.role r
+            WHERE m.organization.id = :organizationId
+              AND m.deletedAt IS NULL
+            ORDER BY m.createdAt DESC
+            """)
+    List<Membership> findAllByOrganizationId(@Param("organizationId") UUID organizationId);
 }

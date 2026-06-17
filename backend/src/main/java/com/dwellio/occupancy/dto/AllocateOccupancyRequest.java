@@ -1,5 +1,6 @@
 package com.dwellio.occupancy.dto;
 
+import com.dwellio.domain.enums.OccupancyClassification;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -10,6 +11,7 @@ public record AllocateOccupancyRequest(
         UUID bedId,
         UUID unitSpaceId,
         @NotNull LocalDate moveInDate,
-        BigDecimal monthlyRent
+        BigDecimal monthlyRent,
+        OccupancyClassification occupancyClassification
 ) {
 }

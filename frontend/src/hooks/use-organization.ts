@@ -49,6 +49,8 @@ export function useUpdateOrganization(orgId: string | undefined) {
     onSettled: () => {
       if (!orgId) return;
       void queryClient.invalidateQueries({ queryKey: queryKeys.organizations.detail(orgId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(orgId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.complaints.slaSummary(orgId) });
     },
   });
 }

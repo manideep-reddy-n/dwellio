@@ -1,6 +1,7 @@
 package com.dwellio.domain.entity;
 
 import com.dwellio.common.entity.SoftDeletableEntity;
+import com.dwellio.domain.entity.Space;
 import com.dwellio.domain.enums.ChargeType;
 import com.dwellio.domain.enums.PaymentStatus;
 import jakarta.persistence.Column;
@@ -69,4 +70,8 @@ public class Payment extends SoftDeletableEntity {
 
     @Column(name = "paid_at")
     private Instant paidAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_space_id")
+    private Space unitSpace;
 }

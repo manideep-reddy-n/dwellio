@@ -13,7 +13,9 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
@@ -109,6 +111,71 @@ public class OrganizationMetricsCache {
 
     @Column(name = "blocked_units")
     private Integer blockedUnits;
+
+    @Column(name = "expected_revenue_month", precision = 14, scale = 2)
+    private BigDecimal expectedRevenueMonth;
+
+    @Column(name = "collected_revenue_month", precision = 14, scale = 2)
+    private BigDecimal collectedRevenueMonth;
+
+    @Column(name = "outstanding_revenue_month", precision = 14, scale = 2)
+    private BigDecimal outstandingRevenueMonth;
+
+    @Column(name = "collection_rate", precision = 5, scale = 2)
+    private BigDecimal collectionRate;
+
+    @Column(name = "defaulters_count", nullable = false)
+    private int defaultersCount;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "revenue_trend_json", nullable = false)
+    private List<Map<String, Object>> revenueTrendJson = new ArrayList<>();
+
+    @Column(name = "forecast_revenue_next_month", precision = 14, scale = 2)
+    private BigDecimal forecastRevenueNextMonth;
+
+    @Column(name = "move_ins_month", nullable = false)
+    private int moveInsMonth;
+
+    @Column(name = "move_outs_month", nullable = false)
+    private int moveOutsMonth;
+
+    @Column(name = "avg_stay_days", precision = 8, scale = 2)
+    private BigDecimal avgStayDays;
+
+    @Column(name = "turnover_rate", precision = 5, scale = 2)
+    private BigDecimal turnoverRate;
+
+    @Column(name = "pending_payments_count", nullable = false)
+    private int pendingPaymentsCount;
+
+    @Column(name = "sla_first_response_hours", nullable = false, precision = 6, scale = 2)
+    private BigDecimal slaFirstResponseHours = BigDecimal.valueOf(24);
+
+    @Column(name = "sla_resolution_hours", nullable = false, precision = 8, scale = 2)
+    private BigDecimal slaResolutionHours = BigDecimal.valueOf(72);
+
+    @Column(name = "sla_compliance_rate", precision = 5, scale = 2)
+    private BigDecimal slaComplianceRate;
+
+    @Column(name = "sla_violations_count", nullable = false)
+    private int slaViolationsCount;
+
+    @Column(name = "reopened_complaints_count", nullable = false)
+    private int reopenedComplaintsCount;
+
+    @Column(name = "avg_breakfast_rating", precision = 3, scale = 2)
+    private BigDecimal avgBreakfastRating;
+
+    @Column(name = "avg_lunch_rating", precision = 3, scale = 2)
+    private BigDecimal avgLunchRating;
+
+    @Column(name = "avg_dinner_rating", precision = 3, scale = 2)
+    private BigDecimal avgDinnerRating;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "meal_ratings_trend_json", nullable = false)
+    private List<Map<String, Object>> mealRatingsTrendJson = new ArrayList<>();
 
     @Column(name = "refreshed_at", nullable = false)
     private Instant refreshedAt;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
 import { countByField, StatusFilterTabs } from "@/components/shared/status-filter-tabs";
@@ -26,6 +27,7 @@ const RESIDENT_FILTER_LABELS: Record<MembershipStatus | "ALL", string> = {
 
 interface ResidentTableProps {
   residents: OrgMembership[] | undefined;
+  orgSlug?: string;
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
@@ -33,10 +35,12 @@ interface ResidentTableProps {
 
 export function ResidentTable({
   residents,
+  orgSlug,
   isLoading,
   isError,
   onRetry,
 }: ResidentTableProps) {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<MembershipStatus | "ALL">("ALL");
 
   const allResidents = residents ?? [];
@@ -104,7 +108,19 @@ export function ResidentTable({
                 </thead>
                 <tbody>
                   {filteredResidents.map((r) => (
-                    <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <tr
+                      key={r.id}
+                      className={
+                        orgSlug
+                          ? "cursor-pointer border-b last:border-0 hover:bg-muted/30"
+                          : "border-b last:border-0"
+                      }
+                      onClick={() => {
+                        if (orgSlug) {
+                          router.push(`/app/${orgSlug}/operations/residents/${r.id}`);
+                        }
+                      }}
+                    >
                       <td className="px-4 py-3 font-medium">{r.userFullName}</td>
                       <td className="px-4 py-3 text-muted-foreground">{r.userEmail}</td>
                       <td className="px-4 py-3 text-muted-foreground">{r.userPhone ?? "—"}</td>

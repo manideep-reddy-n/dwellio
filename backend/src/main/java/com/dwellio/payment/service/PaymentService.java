@@ -26,6 +26,11 @@ import com.dwellio.organization.repository.OrganizationRepository;
 import com.dwellio.payment.dto.CreateManualChargeRequest;
 import com.dwellio.payment.dto.PaymentResponse;
 import com.dwellio.payment.dto.RecordPaymentRequest;
+import com.dwellio.activity.ActivityEventTypes;
+import com.dwellio.activity.service.ActivityEventRecorder;
+import com.dwellio.domain.enums.ActivityEventCategory;
+import com.dwellio.ledger.service.LedgerService;
+import com.dwellio.payment.event.PaymentEventPublisher;
 import com.dwellio.payment.repository.PaymentRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -45,7 +50,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PaymentService {
 
+    private static final String SOURCE_PAYMENT = "PAYMENT";
+
     private final PaymentRepository paymentRepository;
+    private final LedgerService ledgerService;
+    private final ActivityEventRecorder activityEventRecorder;
+    private final PaymentEventPublisher paymentEventPublisher;
     private final InvoiceRepository invoiceRepository;
     private final NotificationRepository notificationRepository;
     private final MembershipRepository membershipRepository;
@@ -90,7 +100,12 @@ public class PaymentService {
                 .map(membershipId -> createManualCharge(organization, request, membershipId, today))
                 .toList();
 
-        created.forEach(payment -> notifyPaymentCreated(organization, payment));
+        created.forEach(payment -> {
+            ledgerService.recordChargeGenerated(payment, null);
+            recordChargeGenerated(payment);
+            notifyPaymentCreated(organization, payment);
+        });
+        paymentEventPublisher.publishMetricsChanged(organizationId);
 
         return created.stream().map(this::toResponse).toList();
     }
@@ -107,6 +122,7 @@ public class PaymentService {
                 .orElseThrow(() -> new NotFoundException("Payment not found"));
 
         BigDecimal dueAmount = payment.getAmount().setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal previousPaid = payment.getAmountPaid();
         BigDecimal amountPaid = (request.amountPaid() != null ? request.amountPaid() : BigDecimal.ZERO)
                 .setScale(2, java.math.RoundingMode.HALF_UP);
         if (amountPaid.compareTo(dueAmount) > 0) {
@@ -120,7 +136,10 @@ public class PaymentService {
         payment.setRecordedBy(referenceUser(principal.getId()));
 
         Payment saved = paymentRepository.save(payment);
+        ledgerService.recordPaymentReceived(saved, previousPaid, referenceUser(principal.getId()));
+        recordPaymentReceived(saved);
         notifyPaymentRecorded(organizationId, saved);
+        paymentEventPublisher.publishMetricsChanged(organizationId);
         return toResponse(saved);
     }
 
@@ -149,7 +168,9 @@ public class PaymentService {
         payment.setChargeType(request.chargeType());
         payment.setDescription(request.description());
         payment.setStatus(request.dueDate().isBefore(today) ? PaymentStatus.OVERDUE : PaymentStatus.PENDING);
-        return paymentRepository.save(payment);
+        Payment saved = paymentRepository.save(payment);
+        ledgerService.recordChargeGenerated(saved, null);
+        return saved;
     }
 
     private void syncMonthlyPayments(Organization organization) {
@@ -202,6 +223,8 @@ public class PaymentService {
                 payment.setDescription("Monthly rent");
                 payment.setStatus(dueDate.isBefore(today) ? PaymentStatus.OVERDUE : PaymentStatus.PENDING);
                 Payment saved = paymentRepository.save(payment);
+                ledgerService.recordChargeGenerated(saved, null);
+                recordChargeGenerated(saved);
                 notifyPaymentCreated(organization, saved);
             }
 
@@ -222,16 +245,18 @@ public class PaymentService {
                 next = payment.getAmountPaid().signum() > 0 ? PaymentStatus.PARTIAL : PaymentStatus.OVERDUE;
             }
             if (payment.getStatus() != next) {
+                PaymentStatus previous = payment.getStatus();
                 payment.setStatus(next);
                 paymentRepository.save(payment);
-                if (next == PaymentStatus.OVERDUE) {
+                if (next == PaymentStatus.OVERDUE && previous != PaymentStatus.OVERDUE) {
+                    recordOverdue(payment);
                     notifyPaymentDue(organization, payment);
                 }
             }
         }
     }
 
-    private PaymentResponse toResponse(Payment payment) {
+    public PaymentResponse toResponse(Payment payment) {
         Invoice invoice = invoiceRepository.findActiveByPaymentId(payment.getId()).orElse(null);
         return new PaymentResponse(
                 payment.getId(),
@@ -340,5 +365,76 @@ public class PaymentService {
         User user = new User();
         user.setId(userId);
         return user;
+    }
+
+    private void recordChargeGenerated(Payment payment) {
+        recordBillingEvent(
+                payment,
+                ActivityEventTypes.CHARGE_GENERATED,
+                "Charge generated",
+                paymentSourceId(payment.getId(), "CHARGE"),
+                payment.getCreatedAt()
+        );
+    }
+
+    private void recordPaymentReceived(Payment payment) {
+        if (payment.getAmountPaid() == null || payment.getAmountPaid().signum() <= 0) {
+            return;
+        }
+        Instant paidAt = payment.getPaidAt() != null ? payment.getPaidAt() : payment.getUpdatedAt();
+        recordBillingEvent(
+                payment,
+                ActivityEventTypes.PAYMENT_RECEIVED,
+                "Payment received",
+                paymentSourceId(payment.getId(), "PAYMENT"),
+                paidAt
+        );
+    }
+
+    private void recordOverdue(Payment payment) {
+        recordBillingEvent(
+                payment,
+                ActivityEventTypes.LATE_FEE_APPLIED,
+                "Payment overdue",
+                paymentSourceId(payment.getId(), "OVERDUE"),
+                payment.getDueDate().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
+        );
+    }
+
+    private void recordBillingEvent(
+            Payment payment,
+            String eventType,
+            String title,
+            UUID sourceId,
+            Instant occurredAt
+    ) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("paymentId", payment.getId().toString());
+        metadata.put("amount", payment.getAmount());
+        metadata.put("amountPaid", payment.getAmountPaid());
+        metadata.put("status", payment.getStatus().name());
+        activityEventRecorder.record(
+                payment.getOrganization().getId(),
+                payment.getMembership().getId(),
+                ActivityEventCategory.BILLING,
+                eventType,
+                title,
+                chargeDescription(payment),
+                metadata,
+                occurredAt,
+                SOURCE_PAYMENT,
+                sourceId
+        );
+    }
+
+    private static String chargeDescription(Payment payment) {
+        if (payment.getDescription() != null && !payment.getDescription().isBlank()) {
+            return payment.getDescription();
+        }
+        return payment.getChargeType().name() + " — ₹" + payment.getAmount();
+    }
+
+    private static UUID paymentSourceId(UUID paymentId, String suffix) {
+        return UUID.nameUUIDFromBytes((paymentId.toString() + ":" + suffix).getBytes());
     }
 }

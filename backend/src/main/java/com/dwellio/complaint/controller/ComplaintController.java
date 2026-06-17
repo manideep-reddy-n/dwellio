@@ -6,6 +6,8 @@ import com.dwellio.complaint.dto.ComplaintAttachmentResponse;
 import com.dwellio.complaint.dto.ComplaintResponse;
 import com.dwellio.complaint.dto.CreateComplaintRequest;
 import com.dwellio.complaint.dto.UpdateComplaintRequest;
+import com.dwellio.complaint.dto.ComplaintSlaSummaryResponse;
+import com.dwellio.complaint.service.ComplaintSlaService;
 import com.dwellio.complaint.service.ComplaintService;
 import com.dwellio.domain.enums.ComplaintCategory;
 import jakarta.validation.Valid;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ComplaintController {
 
     private final ComplaintService complaintService;
+    private final ComplaintSlaService complaintSlaService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -42,13 +45,20 @@ public class ComplaintController {
         return complaintService.create(organizationId, request);
     }
 
+    @GetMapping("/sla-summary")
+    @PreAuthorize("@authz.hasPermission(#organizationId, 'complaint:read')")
+    public ComplaintSlaSummaryResponse slaSummary(@PathVariable UUID organizationId) {
+        return complaintSlaService.getSummary(organizationId);
+    }
+
     @GetMapping
     @PreAuthorize("@authz.hasPermission(#organizationId, 'complaint:read')")
     public List<ComplaintResponse> listAll(
             @PathVariable UUID organizationId,
-            @RequestParam(required = false) ComplaintCategory category
+            @RequestParam(required = false) ComplaintCategory category,
+            @RequestParam(required = false) Boolean slaBreach
     ) {
-        return complaintService.listAll(organizationId, category);
+        return complaintService.listAll(organizationId, category, slaBreach);
     }
 
     @GetMapping("/mine")

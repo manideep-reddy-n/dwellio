@@ -2,6 +2,8 @@
 
 Simplified payment scope for first release. Builds on [payment-architecture.md](./payment-architecture.md) but constrains V1 to essentials.
 
+**V2 deepening (ledger, revenue, billing rules, timeline, etc.) is documented in [payment-v2-deepening.md](./payment-v2-deepening.md).**
+
 **No implementation code in this document.**
 
 ---

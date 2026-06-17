@@ -116,7 +116,9 @@ export function MetricsDashboard({ metrics, isLoading, isError, onRetry }: Metri
           sub={
             metrics.satisfactionScore != null
               ? `Satisfaction ${metrics.satisfactionScore.toFixed(0)}`
-              : undefined
+              : metrics.avgResolutionDays != null
+                ? `Avg resolution ${metrics.avgResolutionDays.toFixed(1)} days`
+                : undefined
           }
           icon={TrendingUp}
           delay={0.2}

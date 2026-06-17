@@ -28,12 +28,14 @@ public record PublicOrganizationResponse(
         String logoUrl,
         boolean verified,
         PublicOrganizationMetrics metrics,
-        List<PublicAmenityResponse> amenities
+        List<PublicAmenityResponse> amenities,
+        List<PublicOrganizationImageResponse> photos
 ) {
     public static PublicOrganizationResponse from(
             Organization organization,
             OrganizationMetricsCache cache,
-            List<PublicAmenityResponse> amenities
+            List<PublicAmenityResponse> amenities,
+            List<PublicOrganizationImageResponse> photos
     ) {
         return new PublicOrganizationResponse(
                 organization.getId(),
@@ -52,7 +54,8 @@ public record PublicOrganizationResponse(
                 organization.getLogoUrl(),
                 organization.getStatus() == OrganizationStatus.VERIFIED,
                 PublicOrganizationMetrics.from(cache),
-                amenities
+                amenities,
+                photos
         );
     }
 

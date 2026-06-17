@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MapPin, Star } from "lucide-react";
+import { OrgCardPhotoCarousel } from "@/components/marketplace/org-card-photo-carousel";
 import { OrganizationLogo } from "@/components/shared/organization-logo";
 import { TrustScoreBadge } from "@/components/marketplace/trust-score-badge";
 import { VerifiedBadge } from "@/components/marketplace/verified-badge";
@@ -22,26 +23,33 @@ interface OrgCardProps {
 
 export function OrgCard({ org, className }: OrgCardProps) {
   const trustInput = trustInputFromMetrics(org.metrics, org.verified);
+  const photos =
+    org.photos && org.photos.length > 0
+      ? org.photos
+      : org.coverPhotoUrl
+        ? [{ url: org.coverPhotoUrl, caption: null }]
+        : [];
 
   return (
-    <Link href={`/${org.slug}`} className={cn("group block", className)}>
-      <Card className="h-full transition-shadow hover:shadow-md">
+    <Card className={cn("h-full overflow-hidden transition-shadow hover:shadow-md", className)}>
+      <OrgCardPhotoCarousel photos={photos} orgName={org.name} href={`/${org.slug}`} />
+      <Link href={`/${org.slug}`} className="group block">
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <OrganizationLogo name={org.name} logoUrl={org.logoUrl} size="md" />
             <div className="min-w-0 flex-1">
-            <Badge variant="secondary" className="mb-2">
-              {orgTypeLabels[org.type]}
-            </Badge>
-            {org.verified && <VerifiedBadge className="mb-2" />}
-            <CardTitle className="truncate text-lg group-hover:text-teal-700 dark:group-hover:text-teal-400">
-              {org.name}
-            </CardTitle>
-            <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="size-3.5 shrink-0" />
-              {formatLocation(org.city, org.area)}
-            </p>
-          </div>
+              <Badge variant="secondary" className="mb-2">
+                {orgTypeLabels[org.type]}
+              </Badge>
+              {org.verified && <VerifiedBadge className="mb-2" />}
+              <CardTitle className="truncate text-lg group-hover:text-teal-700 dark:group-hover:text-teal-400">
+                {org.name}
+              </CardTitle>
+              <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                <MapPin className="size-3.5 shrink-0" />
+                {formatLocation(org.city, org.area)}
+              </p>
+            </div>
           </div>
           <TrustScoreBadge input={trustInput} size="sm" showLabel={false} />
         </CardHeader>
@@ -57,7 +65,7 @@ export function OrgCard({ org, className }: OrgCardProps) {
             <span className="text-muted-foreground">{formatAvailability(org.metrics)}</span>
           </div>
         </CardContent>
-      </Card>
-    </Link>
+      </Link>
+    </Card>
   );
 }

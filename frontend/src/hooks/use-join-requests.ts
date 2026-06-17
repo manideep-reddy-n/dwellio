@@ -39,6 +39,7 @@ export function useJoinRequestActions(orgId: string | undefined) {
     void queryClient.invalidateQueries({ queryKey: queryKeys.memberships(orgId) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(orgId) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.liveOps(orgId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
   };
 
   const approve = useMutation({
