@@ -1,0 +1,59 @@
+# Render Blueprint — set secret values in the Render dashboard after deploy.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  # --- Backend (Spring Boot + Supabase) ---
+  - type: web
+    name: dwellio-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SCHEMA
+        value: dwellio
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_ACCESS_TOKEN_EXPIRATION
+        value: PT15M
+      - key: JWT_REFRESH_TOKEN_EXPIRATION
+        value: P30D
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: SEED_DEMO_DATA
+        value: "false"
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: APP_PUBLIC_URL
+        sync: false
+
+  # --- Frontend (Next.js) ---
+  - type: web
+    name: dwellio-web
+    runtime: node
+    rootDir: frontend
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_WS_URL
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+        sync: false

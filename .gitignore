@@ -1,0 +1,21 @@
+# Dependencies & build output
+node_modules/
+backend/target/
+frontend/.next/
+frontend/out/
+
+# Environment (never commit secrets)
+.env
+.env.local
+.env.production
+!.env.example
+!**/.env.example
+!**/.env.production.example
+
+# IDE & logs
+.idea/
+*.iml
+*.log
+
+# OS
+.DS_Store

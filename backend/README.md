@@ -2,6 +2,8 @@
 
 Spring Boot API for the Dwellio multi-tenant platform.
 
+**Production deployment:** see [DEPLOYMENT.md](../DEPLOYMENT.md) (Render + Supabase).
+
 ## Requirements
 
 - Java 21

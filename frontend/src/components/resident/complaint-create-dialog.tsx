@@ -34,7 +34,7 @@ interface ComplaintCreateDialogProps {
 }
 
 export function ComplaintCreateDialog({ orgId }: ComplaintCreateDialogProps) {
-  const orgType = useOrgStore((s) => s.activeOrg?.type);
+  const orgType = useOrgStore((s) => s.activeOrg?.organizationType);
   const categories = complaintCategoriesForOrgType(orgType);
 
   const [open, setOpen] = useState(false);
