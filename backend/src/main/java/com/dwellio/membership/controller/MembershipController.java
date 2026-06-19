@@ -34,6 +34,12 @@ public class MembershipController {
         return membershipService.listMemberships(organizationId);
     }
 
+    @GetMapping("/residents")
+    @PreAuthorize("@authz.hasPermission(#organizationId, 'resident:read')")
+    public List<MembershipResponse> listResidents(@PathVariable UUID organizationId) {
+        return membershipService.listResidents(organizationId);
+    }
+
     @GetMapping("/team")
     @PreAuthorize("@authz.isActiveMember(#organizationId)")
     public List<OrganizationTeamMemberResponse> listTeam(@PathVariable UUID organizationId) {

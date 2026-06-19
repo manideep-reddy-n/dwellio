@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { LogOut, Shield } from "lucide-react";
 import { ProfileSettingsForm } from "@/components/profile/profile-settings-form";
+import { NotificationPreferencesCard } from "@/components/profile/notification-preferences-card";
 import { PageTransition } from "@/components/shared/page-transition";
 import { PageTitle } from "@/components/shared/page-title";
 import { Badge } from "@/components/ui/badge";
@@ -136,6 +137,8 @@ export default function ProfilePage() {
             </Link>
           </CardContent>
         </Card>
+
+        <NotificationPreferencesCard />
 
         <Button variant="destructive" className="gap-2" onClick={() => void logout()}>
           <LogOut className="size-4" />

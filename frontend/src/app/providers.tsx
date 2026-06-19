@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { StompProvider } from "@/components/providers/stomp-provider";
 import { SessionBootstrap } from "@/components/providers/session-bootstrap";
+import { PushBootstrap } from "@/components/providers/push-bootstrap";
 import { configureApiAuth, configureAuthFailure } from "@/lib/api/client";
 import { isRefreshInFlight, refreshAccessToken } from "@/lib/auth/restore-session";
 import { clearSession } from "@/lib/auth/session";
@@ -58,8 +59,15 @@ function ApiAuthBootstrap() {
       clearAuth();
       clearSession();
       setSessionReady(true);
-      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-        window.location.assign("/login");
+      if (typeof window !== "undefined") {
+        const path = window.location.pathname;
+        if (path.startsWith("/admin")) {
+          if (!path.startsWith("/admin/login")) {
+            window.location.assign("/admin/login");
+          }
+        } else if (!path.startsWith("/login")) {
+          window.location.assign("/login");
+        }
       }
     });
   }, [clearAuth, setSessionReady]);
@@ -88,6 +96,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ApiAuthBootstrap />
       <SessionBootstrap />
+      <PushBootstrap />
       <ReducedMotionBootstrap />
       <StompProvider>{children}</StompProvider>
       <Toaster richColors closeButton position="top-right" />

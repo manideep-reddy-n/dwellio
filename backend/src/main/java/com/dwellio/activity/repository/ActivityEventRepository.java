@@ -39,4 +39,14 @@ public interface ActivityEventRepository extends JpaRepository<ActivityEvent, UU
             String sourceType,
             UUID sourceId
     );
+
+    @Query("""
+            SELECT e FROM ActivityEvent e
+            JOIN FETCH e.organization o
+            LEFT JOIN FETCH e.membership m
+            LEFT JOIN FETCH m.user
+            WHERE o.deletedAt IS NULL
+            ORDER BY e.occurredAt DESC
+            """)
+    List<ActivityEvent> findRecentPlatformWide(org.springframework.data.domain.Pageable pageable);
 }

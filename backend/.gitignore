@@ -13,6 +13,7 @@ target/
 
 .env
 .env.local
+.env.production
 *.log
 
 node_modules/

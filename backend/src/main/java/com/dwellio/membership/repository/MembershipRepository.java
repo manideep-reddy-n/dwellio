@@ -4,6 +4,8 @@ import com.dwellio.domain.entity.Membership;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -179,4 +181,38 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
             ORDER BY m.createdAt DESC
             """)
     List<Membership> findAllByOrganizationId(@Param("organizationId") UUID organizationId);
+
+    @Query("""
+            SELECT COUNT(m) FROM Membership m JOIN m.role r
+            WHERE m.status = 'ACTIVE' AND m.deletedAt IS NULL AND r.name = 'RESIDENT'
+            """)
+    long countActiveResidents();
+
+    @Query("""
+            SELECT COUNT(m) FROM Membership m JOIN m.role r
+            WHERE m.status = 'ACTIVE' AND m.deletedAt IS NULL AND r.ownerRole = TRUE
+            """)
+    long countActiveOwners();
+
+    @Query("""
+            SELECT COUNT(m) FROM Membership m JOIN m.role r
+            WHERE m.status = 'ACTIVE' AND m.deletedAt IS NULL
+              AND r.ownerRole = FALSE AND r.name <> 'RESIDENT'
+            """)
+    long countActiveStaff();
+
+    @Query("""
+            SELECT m FROM Membership m
+            JOIN FETCH m.role r
+            JOIN FETCH m.user u
+            JOIN FETCH m.organization o
+            WHERE m.status = 'ACTIVE' AND m.deletedAt IS NULL
+              AND r.name = 'RESIDENT' AND r.ownerRole = FALSE
+              AND (:query IS NULL OR :query = ''
+                OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(o.name) LIKE LOWER(CONCAT('%', :query, '%')))
+            ORDER BY m.createdAt DESC
+            """)
+    Page<Membership> searchActiveResidentsForAdmin(@Param("query") String query, Pageable pageable);
 }

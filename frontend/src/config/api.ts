@@ -5,5 +5,5 @@ export const apiConfig = {
 
 export const AUTH_COOKIE = "dwellio_token";
 export const SESSION_COOKIE = "dwellio_session";
-/** Align with backend refresh token lifetime (7 days). */
-export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+/** Align with backend refresh token lifetime (30 days). */
+export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;

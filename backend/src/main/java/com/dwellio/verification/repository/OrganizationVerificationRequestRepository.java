@@ -41,4 +41,10 @@ public interface OrganizationVerificationRequestRepository
             @Param("organizationId") UUID organizationId,
             @Param("status") VerificationRequestStatus status
     );
+
+    @Query("""
+            SELECT COUNT(r) FROM OrganizationVerificationRequest r
+            WHERE r.status = :status AND r.submittedAt IS NOT NULL
+            """)
+    long countByStatus(@Param("status") VerificationRequestStatus status);
 }

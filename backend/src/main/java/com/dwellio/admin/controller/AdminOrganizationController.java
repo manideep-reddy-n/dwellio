@@ -76,6 +76,11 @@ public class AdminOrganizationController {
         return adminOrganizationDetailService.listMembers(organizationId);
     }
 
+    @GetMapping("/{organizationId}/residents")
+    public List<MembershipResponse> residents(@PathVariable UUID organizationId) {
+        return adminOrganizationDetailService.listResidents(organizationId);
+    }
+
     @GetMapping("/{organizationId}/accommodation/visualization")
     public AccommodationVisualizationResponse visualization(@PathVariable UUID organizationId) {
         return adminOrganizationDetailService.visualization(organizationId);

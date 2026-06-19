@@ -19,5 +19,5 @@ dwellio:
   jwt:
     secret: test-secret-key-with-at-least-32-characters
     access-token-expiration: PT15M
-    refresh-token-expiration: P7D
+    refresh-token-expiration: P30D
     password-reset-expiration: PT1H

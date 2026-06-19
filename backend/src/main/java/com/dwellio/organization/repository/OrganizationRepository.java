@@ -45,4 +45,16 @@ public interface OrganizationRepository extends JpaRepository<Organization, UUID
             @Param("type") OrganizationType type,
             @Param("query") String query
     );
+
+    @Query("SELECT COUNT(o) FROM Organization o WHERE o.deletedAt IS NULL")
+    long countActive();
+
+    @Query("SELECT COUNT(o) FROM Organization o WHERE o.deletedAt IS NULL AND o.status = :status")
+    long countActiveByStatus(@Param("status") OrganizationStatus status);
+
+    @Query("SELECT COUNT(o) FROM Organization o WHERE o.createdAt >= :since")
+    long countCreatedSince(@Param("since") java.time.Instant since);
+
+    @Query("SELECT COUNT(o) FROM Organization o WHERE o.deletedAt IS NULL AND o.status = com.dwellio.domain.enums.OrganizationStatus.SUSPENDED")
+    long countSuspended();
 }

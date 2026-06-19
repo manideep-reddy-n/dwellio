@@ -1,6 +1,5 @@
 import { apiConfig } from "@/config/api";
 import { apiRequest } from "@/lib/api/client";
-import { getAdminSession } from "@/lib/auth/admin-session";
 import type { AccommodationVisualization, StaffOccupancy } from "@/types/api/accommodation";
 import type { OrgMembership } from "@/types/api/membership";
 import type { OrganizationStatus, OrganizationType } from "@/types/enums";
@@ -34,8 +33,7 @@ export interface AdminSuspensionAppeal {
 }
 
 function adminRequest<T>(path: string, options: Parameters<typeof apiRequest>[2] = {}) {
-  const token = getAdminSession()?.accessToken ?? null;
-  return apiRequest<T>(apiConfig.baseUrl, path, { ...options, token });
+  return apiRequest<T>(apiConfig.baseUrl, path, options);
 }
 
 export const adminApi = {
@@ -64,6 +62,9 @@ export const adminApi = {
 
   listMembers: (orgId: string) =>
     adminRequest<OrgMembership[]>(`/admin/organizations/${orgId}/members`),
+
+  listResidents: (orgId: string) =>
+    adminRequest<OrgMembership[]>(`/admin/organizations/${orgId}/residents`),
 
   visualization: (orgId: string) =>
     adminRequest<AccommodationVisualization>(

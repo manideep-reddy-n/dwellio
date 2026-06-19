@@ -91,6 +91,26 @@ export function StompProvider({ children }: { children: React.ReactNode }) {
                     onClick: markReadOnly,
                   },
             });
+            if (
+              typeof document !== "undefined" &&
+              document.hidden &&
+              typeof Notification !== "undefined" &&
+              Notification.permission === "granted"
+            ) {
+              try {
+                const native = new Notification(payload.title, {
+                  body: payload.body,
+                  tag: payload.id,
+                });
+                native.onclick = () => {
+                  window.focus();
+                  markReadAndGo();
+                  native.close();
+                };
+              } catch {
+                // Ignore if Notification API unavailable.
+              }
+            }
           } catch (error) {
             console.error("Failed to handle notification", error);
           }

@@ -1,10 +1,17 @@
 spring:
   application:
     name: dwellio-api
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:.env.${spring.profiles.active}[.properties]
+  profiles:
+    default: local
+    active: ${SPRING_PROFILES_ACTIVE:local}
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/dwellio}
-    username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:manideep@1}
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -17,7 +24,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: true
+    baseline-on-migrate: false
 
 server:
   port: ${PORT:8081}
@@ -35,11 +42,15 @@ dwellio:
   app:
     public-url: ${APP_PUBLIC_URL:http://localhost:3000}
   cloudinary:
-    url: ${CLOUDINARY_URL:cloudinary://891566529789124:REMOVED_SECRET@dapae2uiz}
+    url: ${CLOUDINARY_URL:}
   dev:
-    seed-demo-data: ${SEED_DEMO_DATA:true}
+    seed-demo-data: ${SEED_DEMO_DATA:false}
   jwt:
-    secret: ${JWT_SECRET:change-me-use-at-least-32-characters-long-secret}
-    access-token-expiration: PT15M
-    refresh-token-expiration: P7D
+    secret: ${JWT_SECRET}
+    access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:PT15M}
+    refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:P30D}
     password-reset-expiration: PT1H
+  push:
+    vapid-public-key: ${VAPID_PUBLIC_KEY:}
+    vapid-private-key: ${VAPID_PRIVATE_KEY:}
+    subject: ${VAPID_SUBJECT:mailto:admin@dwellio.local}

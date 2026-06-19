@@ -18,6 +18,7 @@ import com.dwellio.verification.dto.AdminVerificationRequestSummary;
 import com.dwellio.verification.dto.VerificationRequestResponse;
 import com.dwellio.verification.repository.OrganizationVerificationDocumentRepository;
 import com.dwellio.verification.repository.OrganizationVerificationRequestRepository;
+import com.dwellio.audit.service.PlatformAuditService;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
@@ -37,6 +38,7 @@ public class AdminVerificationService {
     private final AuthorizationService authorizationService;
     private final MembershipRepository membershipRepository;
     private final NotificationService notificationService;
+    private final PlatformAuditService auditService;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -81,6 +83,15 @@ public class AdminVerificationService {
         organization.setVerifiedBy(referenceUser(principal.getId()));
         organization.setRejectionReason(null);
 
+        auditService.recordForCurrentUser(
+                "VERIFICATION_APPROVED",
+                "VERIFICATION_REQUEST",
+                requestId,
+                organization.getId(),
+                VerificationRequestStatus.PENDING.name(),
+                VerificationRequestStatus.APPROVED.name()
+        );
+
         notifyOwners(
                 organization,
                 NotificationType.ORGANIZATION_VERIFIED,
@@ -115,6 +126,15 @@ public class AdminVerificationService {
         organization.setVerifiedAt(Instant.now(clock));
         organization.setVerifiedBy(referenceUser(principal.getId()));
 
+        auditService.recordForCurrentUser(
+                "VERIFICATION_REJECTED",
+                "VERIFICATION_REQUEST",
+                requestId,
+                organization.getId(),
+                VerificationRequestStatus.PENDING.name(),
+                VerificationRequestStatus.REJECTED.name()
+        );
+
         notifyOwners(
                 organization,
                 NotificationType.ORGANIZATION_VERIFICATION_REJECTED,
@@ -144,6 +164,15 @@ public class AdminVerificationService {
         request.setReviewedBy(referenceUser(principal.getId()));
         request.setNotes(notes);
         request.setRejectionReason(null);
+
+        auditService.recordForCurrentUser(
+                "VERIFICATION_MORE_INFO_REQUESTED",
+                "VERIFICATION_REQUEST",
+                requestId,
+                organization.getId(),
+                VerificationRequestStatus.PENDING.name(),
+                VerificationRequestStatus.MORE_INFO_REQUIRED.name()
+        );
 
         notifyOwners(
                 organization,

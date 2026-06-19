@@ -22,11 +22,18 @@ export function useOrgMemberships(orgId: string | undefined) {
 }
 
 export function useResidents(orgId: string | undefined) {
-  const query = useOrgMemberships(orgId);
-  return {
-    ...query,
-    data: query.data?.filter((m) => m.roleName.toLowerCase() === "resident"),
-  };
+  const { authReady } = useAuthReady();
+
+  return useQuery({
+    queryKey: orgId ? [...queryKeys.memberships(orgId), "residents"] : ["residents", "disabled"],
+    queryFn: () => membershipsApi.listResidents(orgId!),
+    enabled: authReady && Boolean(orgId),
+    staleTime: queryDefaults.staleTime.liveOps,
+    select: (data) =>
+      [...data].sort((a, b) =>
+        (a.userFullName ?? a.userEmail).localeCompare(b.userFullName ?? b.userEmail),
+      ),
+  });
 }
 
 export function useStaffMembers(orgId: string | undefined) {

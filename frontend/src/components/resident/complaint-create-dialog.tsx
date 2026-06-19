@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,12 +16,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateComplaint } from "@/hooks/use-complaints";
+import { useOrgStore } from "@/stores/org-store";
 import {
-  complaintCategories,
   complaintCategoryLabels,
   complaintPriorities,
   complaintPriorityLabels,
 } from "@/lib/resident/labels";
+import {
+  complaintCategoriesForOrgType,
+  defaultComplaintCategory,
+} from "@/lib/complaints/categories";
 import type { ComplaintCategory, ComplaintPriority } from "@/types/enums";
 import { toast } from "sonner";
 
@@ -30,18 +34,27 @@ interface ComplaintCreateDialogProps {
 }
 
 export function ComplaintCreateDialog({ orgId }: ComplaintCreateDialogProps) {
+  const orgType = useOrgStore((s) => s.activeOrg?.type);
+  const categories = complaintCategoriesForOrgType(orgType);
+
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<ComplaintCategory>("MAINTENANCE");
+  const [category, setCategory] = useState<ComplaintCategory>(defaultComplaintCategory(orgType));
   const [priority, setPriority] = useState<ComplaintPriority>("MEDIUM");
 
   const create = useCreateComplaint(orgId);
 
+  useEffect(() => {
+    if (!categories.includes(category)) {
+      setCategory(defaultComplaintCategory(orgType));
+    }
+  }, [categories, category, orgType]);
+
   function reset() {
     setTitle("");
     setDescription("");
-    setCategory("MAINTENANCE");
+    setCategory(defaultComplaintCategory(orgType));
     setPriority("MEDIUM");
   }
 
@@ -105,7 +118,7 @@ export function ComplaintCreateDialog({ orgId }: ComplaintCreateDialogProps) {
                   value={category}
                   onChange={(e) => setCategory(e.target.value as ComplaintCategory)}
                 >
-                  {complaintCategories.map((c) => (
+                  {categories.map((c) => (
                     <option key={c} value={c}>
                       {complaintCategoryLabels[c]}
                     </option>

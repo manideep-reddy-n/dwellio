@@ -10,14 +10,89 @@ Spring Boot API for the Dwellio multi-tenant platform.
 
 ## Configuration
 
-Set environment variables (or use defaults for local dev):
+Environment is split across three files (all gitignored except `.env.example`):
+
+| File | Purpose |
+|------|---------|
+| `backend/.env` | Shared secrets: `JWT_SECRET`, Cloudinary, VAPID, `PORT` |
+| `backend/.env.local` | Local dev: Postgres + `SPRING_PROFILES_ACTIVE=local` |
+| `backend/.env.production` | Supabase pooler + `SPRING_PROFILES_ACTIVE=production` |
+
+Copy `backend/.env.example` and create the profile files above. **Do not** set `SPRING_PROFILES_ACTIVE` in shared `.env` — it belongs in the profile file or your shell/hosting env.
+
+### Local development
+
+```powershell
+cd backend
+# Uses .env + .env.local automatically
+mvn spring-boot:run
+```
+
+`backend/.env.local`:
 
 ```bash
+SPRING_PROFILES_ACTIVE=local
 DATABASE_URL=jdbc:postgresql://localhost:5432/dwellio
 DATABASE_USERNAME=postgres
-DATABASE_PASSWORD=postgres
-PORT=8081
+DATABASE_PASSWORD=<your-local-password>
+SEED_DEMO_DATA=true
 ```
+
+Create the database once: `createdb dwellio` (or via pgAdmin).
+
+### Production (Supabase session pooler)
+
+Set `SPRING_PROFILES_ACTIVE=production` in `backend/.env.production`. You can paste the **full** URI from Supabase (password `@` → `%40`):
+
+```bash
+DATABASE_URL=postgresql://postgres.<PROJECT_REF>:<PASSWORD>@aws-1-<region>.pooler.supabase.com:5432/postgres
+```
+
+Or split host and credentials:
+
+```bash
+DATABASE_URL=jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require
+DATABASE_USERNAME=postgres.<project-ref>
+DATABASE_PASSWORD=<supabase-database-password>
+DATABASE_SCHEMA=dwellio
+JWT_SECRET=<same-as-backend-.env>
+SEED_DEMO_DATA=false
+CORS_ALLOWED_ORIGINS=https://your-domain.com
+APP_PUBLIC_URL=https://your-domain.com
+```
+
+`DATABASE_SCHEMA=dwellio` creates an isolated Postgres schema when `public` already contains other tables (common on reused Supabase projects). Flyway runs all migrations inside that schema.
+
+```powershell
+cd backend
+$env:SPRING_PROFILES_ACTIVE='production'
+mvn spring-boot:run
+```
+
+**Common Supabase mistakes (verified failures):**
+
+| Problem | Symptom | Fix |
+|---------|---------|-----|
+| Missing `jdbc:` prefix | `Driver claims to not accept jdbcUrl` | Use `jdbc:postgresql://...` |
+| Supabase URI pasted as-is | Same error | App auto-normalizes `postgresql://` → `jdbc:postgresql://` |
+| Username `dwellio` | Auth / tenant errors | Use `postgres` (direct) or `postgres.<ref>` (pooler) |
+| Direct `db.*.supabase.co` on IPv4 networks | `UnknownHostException` | Use the **pooler** host (IPv4) from dashboard |
+| Wrong pooler region | `tenant/user postgres.<ref> not found` | Copy the pooler host from your dashboard — region must match |
+| Non-empty `public` schema | `Found non-empty schema(s) "public" but no schema history table` | Set `DATABASE_SCHEMA=dwellio` in `.env.production` |
+| Bad Flyway baseline on fresh DB | `subscription_plans does not exist` | Drop `flyway_schema_history` or use `DATABASE_SCHEMA=dwellio` |
+| Credentials embedded in URL | Conflicts with USERNAME/PASSWORD vars | URI parser extracts both; split vars also work |
+| Windows `DATABASE_*` env vars | Wrong DB despite `.env` | Remove User Environment Variables that override `.env` |
+
+**URL normalization:** `DatabaseEnvironmentPostProcessor` adds `jdbc:` and `sslmode=require` for Supabase hosts automatically.
+
+**Manual region probe** (if pooler host is unknown):
+
+```bash
+mvn test -Dtest=SupabaseConnectionDiagnostic#probePoolerRegions \
+  -Djunit.jupiter.conditions.deactivate=org.junit.*DisabledCondition
+```
+
+(Run with `DATABASE_PASSWORD` set in the environment.)
 
 ## Run
 

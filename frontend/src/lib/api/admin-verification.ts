@@ -1,6 +1,5 @@
 import { apiConfig } from "@/config/api";
 import { apiRequest } from "@/lib/api/client";
-import { getAdminSession } from "@/lib/auth/admin-session";
 import type {
   AdminVerificationRequestSummary,
   VerificationRequest,
@@ -8,8 +7,7 @@ import type {
 } from "@/lib/api/verification";
 
 function adminRequest<T>(path: string, options: Parameters<typeof apiRequest>[2] = {}) {
-  const token = getAdminSession()?.accessToken ?? null;
-  return apiRequest<T>(apiConfig.baseUrl, path, { ...options, token });
+  return apiRequest<T>(apiConfig.baseUrl, path, options);
 }
 
 export const adminVerificationApi = {

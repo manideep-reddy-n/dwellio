@@ -69,7 +69,7 @@ function AdminLoginForm() {
           </div>
           <CardTitle>{siteConfig.name} Admin</CardTitle>
           <CardDescription>
-            Platform administrator credentials required. Session expires after 2 hours of inactivity.
+            Platform administrator credentials required. Your session persists for up to 30 days with automatic token refresh.
           </CardDescription>
         </CardHeader>
         <CardContent>

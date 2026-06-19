@@ -19,6 +19,7 @@ import com.dwellio.complaint.event.ComplaintReopenedEvent;
 import com.dwellio.complaint.event.ComplaintResolvedEvent;
 import com.dwellio.complaint.repository.ComplaintAttachmentRepository;
 import com.dwellio.complaint.repository.ComplaintRepository;
+import com.dwellio.complaint.support.ComplaintCategorySupport;
 import com.dwellio.complaint.sla.ComplaintSlaSettings;
 import com.dwellio.domain.entity.Asset;
 import com.dwellio.domain.entity.Complaint;
@@ -84,6 +85,13 @@ public class ComplaintService {
         MembershipContext context = authorizationService.requirePermission(organizationId, "complaint:create");
         Organization organization = operationsGuard.requireOrganization(organizationId);
         Membership creator = getMembership(organizationId, context.getMembershipId());
+
+        if (!ComplaintCategorySupport.isAllowed(organization.getType(), request.category())) {
+            throw new BadRequestException(
+                    "Category %s is not available for %s organizations"
+                            .formatted(request.category(), organization.getType())
+            );
+        }
 
         Complaint complaint = new Complaint();
         complaint.setId(UUID.randomUUID());

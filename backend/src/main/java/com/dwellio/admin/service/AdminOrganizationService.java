@@ -16,6 +16,7 @@ import com.dwellio.domain.enums.SuspensionAppealStatus;
 import com.dwellio.membership.repository.MembershipRepository;
 import com.dwellio.notification.service.NotificationService;
 import com.dwellio.organization.dto.SuspensionAppealResponse;
+import com.dwellio.audit.service.PlatformAuditService;
 import com.dwellio.organization.repository.OrganizationMetricsCacheRepository;
 import com.dwellio.organization.repository.OrganizationRepository;
 import com.dwellio.organization.repository.OrganizationSuspensionAppealRepository;
@@ -39,6 +40,7 @@ public class AdminOrganizationService {
     private final AuthorizationService authorizationService;
     private final NotificationService notificationService;
     private final OrganizationSuspensionAppealRepository appealRepository;
+    private final PlatformAuditService auditService;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -63,10 +65,20 @@ public class AdminOrganizationService {
         if (organization.getStatus() == OrganizationStatus.VERIFIED) {
             throw new BadRequestException("Organization is already verified");
         }
+        OrganizationStatus previousStatus = organization.getStatus();
         organization.setStatus(OrganizationStatus.VERIFIED);
         organization.setVerifiedAt(Instant.now(clock));
         organization.setVerifiedBy(referenceUser(principal.getId()));
         organization.setRejectionReason(null);
+
+        auditService.recordForCurrentUser(
+                "ORGANIZATION_VERIFIED",
+                "ORGANIZATION",
+                organizationId,
+                organizationId,
+                previousStatus.name(),
+                OrganizationStatus.VERIFIED.name()
+        );
 
         notifyOwners(organization, "Organization verified",
                 "Congratulations! %s is now verified on Dwellio.".formatted(organization.getName()));
@@ -78,10 +90,20 @@ public class AdminOrganizationService {
     public AdminOrganizationSummary reject(UUID organizationId, UserPrincipal principal, RejectOrganizationRequest request) {
         requirePlatformAdmin();
         Organization organization = findOrg(organizationId);
+        OrganizationStatus previousStatus = organization.getStatus();
         organization.setStatus(OrganizationStatus.REJECTED);
         organization.setRejectionReason(request.reason());
         organization.setVerifiedBy(referenceUser(principal.getId()));
         organization.setVerifiedAt(Instant.now(clock));
+
+        auditService.recordForCurrentUser(
+                "ORGANIZATION_REJECTED",
+                "ORGANIZATION",
+                organizationId,
+                organizationId,
+                previousStatus.name(),
+                OrganizationStatus.REJECTED.name()
+        );
 
         notifyOwners(organization, "Verification declined",
                 "Verification for %s was declined. Reason: %s"
@@ -98,6 +120,14 @@ public class AdminOrganizationService {
             throw new BadRequestException("Organization is already suspended");
         }
         organization.setStatus(OrganizationStatus.SUSPENDED);
+        auditService.recordForCurrentUser(
+                "ORGANIZATION_SUSPENDED",
+                "ORGANIZATION",
+                organizationId,
+                organizationId,
+                "active",
+                OrganizationStatus.SUSPENDED.name()
+        );
         notifyOwners(
                 organization,
                 NotificationType.ORGANIZATION_SUSPENDED,
@@ -119,6 +149,14 @@ public class AdminOrganizationService {
                 organization.getVerifiedAt() != null
                         ? OrganizationStatus.VERIFIED
                         : OrganizationStatus.DRAFT
+        );
+        auditService.recordForCurrentUser(
+                "ORGANIZATION_UNSUSPENDED",
+                "ORGANIZATION",
+                organizationId,
+                organizationId,
+                OrganizationStatus.SUSPENDED.name(),
+                organization.getStatus().name()
         );
         notifyOwners(
                 organization,

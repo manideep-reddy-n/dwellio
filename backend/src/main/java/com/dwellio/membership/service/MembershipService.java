@@ -51,6 +51,14 @@ public class MembershipService {
     }
 
     @Transactional(readOnly = true)
+    public List<MembershipResponse> listResidents(UUID organizationId) {
+        organizationService.findActiveOrganization(organizationId);
+        return membershipRepository.findActiveResidentsByOrganizationId(organizationId).stream()
+                .map(MembershipService::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<MembershipResponse> listMemberships(UUID organizationId) {
         organizationService.findActiveOrganization(organizationId);
         return membershipRepository.findAllActiveByOrganizationId(organizationId).stream()

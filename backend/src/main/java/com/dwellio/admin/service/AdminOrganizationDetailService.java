@@ -24,6 +24,12 @@ public class AdminOrganizationDetailService {
     private final OccupancyService occupancyService;
 
     @Transactional(readOnly = true)
+    public List<MembershipResponse> listResidents(UUID organizationId) {
+        requirePlatformAdmin();
+        return membershipService.listResidents(organizationId);
+    }
+
+    @Transactional(readOnly = true)
     public List<MembershipResponse> listMembers(UUID organizationId) {
         requirePlatformAdmin();
         return membershipService.listMemberships(organizationId);

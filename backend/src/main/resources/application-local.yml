@@ -1,0 +1,14 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/dwellio}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+
+dwellio:
+  dev:
+    seed-demo-data: ${SEED_DEMO_DATA:true}
+  jwt:
+    secret: ${JWT_SECRET:change-me-use-at-least-32-characters-long-secret}

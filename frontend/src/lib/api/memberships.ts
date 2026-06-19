@@ -13,6 +13,9 @@ export const membershipsApi = {
   list: (orgId: string) =>
     apiRequest<OrgMembership[]>(apiConfig.baseUrl, `/organizations/${orgId}/memberships`),
 
+  listResidents: (orgId: string) =>
+    apiRequest<OrgMembership[]>(apiConfig.baseUrl, `/organizations/${orgId}/residents`),
+
   team: (orgId: string) =>
     apiRequest<OrganizationTeamMember[]>(apiConfig.baseUrl, `/organizations/${orgId}/team`),
 

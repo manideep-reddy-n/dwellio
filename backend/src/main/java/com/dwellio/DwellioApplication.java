@@ -1,5 +1,6 @@
 package com.dwellio;
 
+import com.dwellio.common.config.DatabaseEnvironmentPreparedListener;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
@@ -10,6 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class DwellioApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(DwellioApplication.class, args);
+        SpringApplication application = new SpringApplication(DwellioApplication.class);
+        application.addListeners(new DatabaseEnvironmentPreparedListener());
+        application.run(args);
     }
 }

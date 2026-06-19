@@ -26,6 +26,12 @@ public class AuthorizationService {
         return currentPrincipal().isPlatformAdmin();
     }
 
+    public void requirePlatformAdmin() {
+        if (!isPlatformAdmin()) {
+            throw new ForbiddenException("Platform admin required");
+        }
+    }
+
     @Transactional(readOnly = true)
     public boolean hasPermission(UUID organizationId, String permission) {
         tenantContext.requireOrganization(organizationId);
