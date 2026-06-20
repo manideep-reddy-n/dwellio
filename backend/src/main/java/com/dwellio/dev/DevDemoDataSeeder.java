@@ -70,7 +70,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @Component
 @Profile("!test")
-@ConditionalOnProperty(name = "dwellio.dev.seed-demo-data", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "dwellio.dev.seed-demo-data", havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
 public class DevDemoDataSeeder {

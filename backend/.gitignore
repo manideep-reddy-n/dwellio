@@ -12,14 +12,10 @@ target/
 .settings/
 
 .env
-.env.local
-.env.production
 !.env.example
-!.env.production.example
 *.log
 
 node_modules/
-.env
 .next/
 dist/
 build/

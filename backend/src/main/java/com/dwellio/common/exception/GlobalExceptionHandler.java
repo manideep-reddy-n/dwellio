@@ -2,6 +2,7 @@ package com.dwellio.common.exception;
 
 import java.time.Instant;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
@@ -28,12 +30,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<Map<String, Object>> handleDataAccess(DataAccessException ex) {
+        log.error("Database error", ex);
         return ResponseEntity.internalServerError()
                 .body(errorBody(500, "Database error while processing request"));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception ex) {
+        log.error("Unexpected server error", ex);
         return ResponseEntity.internalServerError()
                 .body(errorBody(500, "Unexpected server error"));
     }

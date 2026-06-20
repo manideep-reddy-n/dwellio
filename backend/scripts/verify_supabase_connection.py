@@ -1,14 +1,14 @@
-"""Verify Supabase connectivity using backend/.env.production (no secrets printed)."""
+"""Verify Supabase connectivity using backend/.env (no secrets printed)."""
 from __future__ import annotations
 
-import os
 import re
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 import psycopg2
 
-ENV_FILE = Path(__file__).resolve().parents[1] / ".env.production"
+ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -32,7 +32,7 @@ def parse_uri(uri: str) -> tuple[str, str, str, int, str]:
     if not m:
         raise ValueError("Could not parse DATABASE_URL")
     user = m.group(1)
-    password = __import__("urllib.parse").parse.unquote(m.group(2))
+    password = unquote(m.group(2))
     host = m.group(3)
     port = int(m.group(4))
     dbname = m.group(5)
@@ -43,7 +43,7 @@ def main() -> int:
     env = load_env(ENV_FILE)
     raw_url = env.get("DATABASE_URL")
     if not raw_url:
-        print("DATABASE_URL missing in .env.production", file=sys.stderr)
+        print("DATABASE_URL missing in backend/.env", file=sys.stderr)
         return 1
 
     host, user, password, port, dbname = parse_uri(raw_url)
@@ -67,6 +67,12 @@ def main() -> int:
         (schema,),
     )
     print(f"Schema '{schema}' exists:", cur.fetchone() is not None)
+
+    cur.execute(
+        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s",
+        (schema,),
+    )
+    print(f"Tables in '{schema}':", cur.fetchone()[0])
 
     cur.close()
     conn.close()

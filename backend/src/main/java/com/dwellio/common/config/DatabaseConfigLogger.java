@@ -16,7 +16,7 @@ public class DatabaseConfigLogger {
     @Value("${spring.profiles.active:}")
     private String activeProfile;
 
-    @Value("${spring.jpa.properties.hibernate.default_schema:public}")
+    @Value("${spring.jpa.properties.hibernate.default_schema:dwellio}")
     private String databaseSchema;
 
     @EventListener(ApplicationReadyEvent.class)

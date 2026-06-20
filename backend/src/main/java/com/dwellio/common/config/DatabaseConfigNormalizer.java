@@ -8,17 +8,19 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
 /**
- * Normalizes DATABASE_URL from Supabase / hosting formats after all config sources
- * (including profile .env files) are loaded.
+ * Normalizes DATABASE_URL from Supabase / hosting formats and applies PostgreSQL schema routing
+ * so JPA, native SQL, and JdbcTemplate all target {@code DATABASE_SCHEMA} (default: dwellio).
  */
 final class DatabaseConfigNormalizer {
 
     private static final String DATABASE_URL_KEY = "DATABASE_URL";
+    private static final String DATABASE_SCHEMA_KEY = "DATABASE_SCHEMA";
     private static final String DATABASE_USERNAME_KEY = "DATABASE_USERNAME";
     private static final String DATABASE_PASSWORD_KEY = "DATABASE_PASSWORD";
     private static final String SPRING_DATASOURCE_URL = "spring.datasource.url";
     private static final String SPRING_DATASOURCE_USERNAME = "spring.datasource.username";
     private static final String SPRING_DATASOURCE_PASSWORD = "spring.datasource.password";
+    private static final String HIKARI_CONNECTION_INIT_SQL = "spring.datasource.hikari.connection-init-sql";
     private static final String PROPERTY_SOURCE = "normalizedDatabaseConfig";
 
     private DatabaseConfigNormalizer() {
@@ -30,14 +32,14 @@ final class DatabaseConfigNormalizer {
             return;
         }
 
+        String schema = sanitizeSchema(environment.getProperty(DATABASE_SCHEMA_KEY, "dwellio"));
         ParsedDatabaseConfig parsed = parseDatabaseUrl(rawUrl.trim());
-        if (!needsNormalization(rawUrl)) {
-            return;
-        }
+        String jdbcUrl = withCurrentSchema(parsed.jdbcUrl(), schema);
 
         Map<String, Object> properties = new HashMap<>();
-        properties.put(SPRING_DATASOURCE_URL, parsed.jdbcUrl());
-        properties.put(DATABASE_URL_KEY, parsed.jdbcUrl());
+        properties.put(SPRING_DATASOURCE_URL, jdbcUrl);
+        properties.put(DATABASE_URL_KEY, jdbcUrl);
+        properties.put(HIKARI_CONNECTION_INIT_SQL, "SET search_path TO " + schema);
 
         if (parsed.username() != null && !parsed.username().isBlank()) {
             properties.put(SPRING_DATASOURCE_USERNAME, parsed.username());
@@ -52,11 +54,6 @@ final class DatabaseConfigNormalizer {
             environment.getPropertySources().remove(PROPERTY_SOURCE);
         }
         environment.getPropertySources().addFirst(new MapPropertySource(PROPERTY_SOURCE, properties));
-    }
-
-    private static boolean needsNormalization(String rawUrl) {
-        String trimmed = rawUrl.trim();
-        return trimmed.startsWith("postgresql://") || trimmed.startsWith("postgres://");
     }
 
     static ParsedDatabaseConfig parseDatabaseUrl(String rawUrl) {
@@ -95,7 +92,7 @@ final class DatabaseConfigNormalizer {
         }
 
         String jdbcUrl = "jdbc:postgresql://" + hostPart;
-        if (isSupabaseHost(hostPart) && !query.contains("sslmode=")) {
+        if (isPostgresHost(hostPart) && !query.contains("sslmode=")) {
             query = query.isEmpty() ? "?sslmode=require" : query + "&sslmode=require";
         }
         jdbcUrl += query;
@@ -103,8 +100,24 @@ final class DatabaseConfigNormalizer {
         return new ParsedDatabaseConfig(jdbcUrl, username, password);
     }
 
-    private static boolean isSupabaseHost(String hostPart) {
-        return hostPart.contains("supabase.co") || hostPart.contains("supabase.com");
+    static String withCurrentSchema(String jdbcUrl, String schema) {
+        if (jdbcUrl.contains("currentSchema=")) {
+            return jdbcUrl;
+        }
+        return jdbcUrl + (jdbcUrl.contains("?") ? "&" : "?") + "currentSchema=" + schema;
+    }
+
+    static String sanitizeSchema(String schema) {
+        if (schema == null || !schema.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
+            throw new IllegalStateException("Invalid DATABASE_SCHEMA: " + schema);
+        }
+        return schema;
+    }
+
+    private static boolean isPostgresHost(String hostPart) {
+        return hostPart.contains("supabase.co")
+                || hostPart.contains("supabase.com")
+                || hostPart.contains("postgres");
     }
 
     private static String decode(String value) {

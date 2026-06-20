@@ -60,11 +60,15 @@ export function useCreateComplaint(orgId: string | undefined) {
         queryClient.setQueryData(context.key, context.previous);
       }
     },
-    onSettled: () => {
+    onSuccess: () => {
       if (!orgId) return;
       void queryClient.invalidateQueries({ queryKey: queryKeys.complaints.mine(orgId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.resident.home(orgId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.timeline(orgId) });
+    },
+    onSettled: () => {
+      if (!orgId) return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.complaints.mine(orgId) });
     },
   });
 }

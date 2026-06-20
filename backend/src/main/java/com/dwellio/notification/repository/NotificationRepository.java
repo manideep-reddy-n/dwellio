@@ -2,6 +2,7 @@ package com.dwellio.notification.repository;
 
 import com.dwellio.domain.entity.Notification;
 import com.dwellio.domain.enums.NotificationStatus;
+import com.dwellio.domain.enums.NotificationType;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,20 +62,19 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
             """)
     int markAllRead(@Param("userId") UUID userId, @Param("readAt") java.time.Instant readAt);
 
-    @Query(value = """
-            SELECT EXISTS (
-                SELECT 1 FROM notifications n
-                WHERE n.user_id = :userId
-                  AND n.organization_id = :organizationId
-                  AND n.type = CAST(:type AS VARCHAR)
-                  AND n.created_at >= :since
-                  AND n.payload_json::text LIKE CONCAT('%', :paymentId, '%')
-            )
-            """, nativeQuery = true)
+    @Query("""
+            SELECT CASE WHEN COUNT(n) > 0 THEN TRUE ELSE FALSE END
+            FROM Notification n
+            WHERE n.user.id = :userId
+              AND n.organization.id = :organizationId
+              AND n.type = :type
+              AND n.createdAt >= :since
+              AND CAST(n.payloadJson AS string) LIKE CONCAT('%', :paymentId, '%')
+            """)
     boolean existsRecentForPayment(
             @Param("userId") UUID userId,
             @Param("organizationId") UUID organizationId,
-            @Param("type") String type,
+            @Param("type") NotificationType type,
             @Param("paymentId") String paymentId,
             @Param("since") Instant since
     );

@@ -7,10 +7,8 @@ frontend/out/
 # Environment (never commit secrets)
 .env
 .env.local
-.env.production
 !.env.example
 !**/.env.example
-!**/.env.production.example
 
 # IDE & logs
 .idea/

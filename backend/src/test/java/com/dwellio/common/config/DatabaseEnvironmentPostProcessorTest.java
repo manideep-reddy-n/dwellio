@@ -23,7 +23,7 @@ class DatabaseEnvironmentPostProcessorTest {
 
     @Test
     void leavesLocalJdbcUrlWithoutCredentials() {
-        String input = "jdbc:postgresql://localhost:5432/dwellio";
+        String input = "jdbc:postgresql://aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require";
         var parsed = DatabaseConfigNormalizer.parseDatabaseUrl(input);
 
         assertEquals(input, parsed.jdbcUrl());
@@ -49,10 +49,10 @@ class DatabaseEnvironmentPostProcessorTest {
     }
 
     @Test
-    void appendsSslForSupabasePoolerHost() {
-        String input =
-                "postgresql://postgres.ref:secret@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres";
-        var parsed = DatabaseConfigNormalizer.parseDatabaseUrl(input);
-        assertTrue(parsed.jdbcUrl().contains("sslmode=require"));
+    void appendsCurrentSchema() {
+        String input = "jdbc:postgresql://localhost:5432/postgres?sslmode=require";
+        assertEquals(
+                "jdbc:postgresql://localhost:5432/postgres?sslmode=require&currentSchema=dwellio",
+                DatabaseConfigNormalizer.withCurrentSchema(input, "dwellio"));
     }
 }

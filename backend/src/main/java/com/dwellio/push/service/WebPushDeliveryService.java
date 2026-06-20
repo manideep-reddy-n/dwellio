@@ -42,6 +42,14 @@ public class WebPushDeliveryService {
 
     @EventListener
     public void deliverPush(NotificationCreatedEvent event) {
+        try {
+            deliverPushInternal(event);
+        } catch (Exception ex) {
+            log.warn("Push delivery skipped for notification {}: {}", event.notificationId(), ex.getMessage());
+        }
+    }
+
+    private void deliverPushInternal(NotificationCreatedEvent event) {
         if (!platformConfigService.isEnabled("notifications.push.enabled", "enabled", true)) {
             return;
         }
@@ -64,13 +72,14 @@ public class WebPushDeliveryService {
             return;
         }
 
-        if (!pushProperties.isConfigured()) {
+        PushService pushService = buildPushService();
+        if (pushService == null) {
             deliveryLogService.log(
                     notification,
                     notification.getUser(),
                     NotificationDeliveryChannel.PUSH,
                     NotificationDeliveryStatus.SKIPPED,
-                    "VAPID keys not configured"
+                    "VAPID keys missing or invalid"
             );
             return;
         }
@@ -88,7 +97,6 @@ public class WebPushDeliveryService {
         }
 
         String payload = buildPayload(notification);
-        PushService pushService = buildPushService();
 
         for (PushSubscription subscription : subscriptions) {
             try {
@@ -121,14 +129,20 @@ public class WebPushDeliveryService {
     }
 
     private PushService buildPushService() {
+        if (!pushProperties.isConfigured()) {
+            return null;
+        }
         try {
             PushService pushService = new PushService();
             pushService.setPublicKey(pushProperties.vapidPublicKey());
             pushService.setPrivateKey(pushProperties.vapidPrivateKey());
-            pushService.setSubject(pushProperties.subject() != null ? pushProperties.subject() : "mailto:admin@dwellio.local");
+            pushService.setSubject(
+                    pushProperties.subject() != null ? pushProperties.subject() : "mailto:admin@dwellio.local"
+            );
             return pushService;
         } catch (GeneralSecurityException ex) {
-            throw new IllegalStateException("Invalid VAPID configuration", ex);
+            log.warn("Invalid VAPID configuration: {}", ex.getMessage());
+            return null;
         }
     }
 

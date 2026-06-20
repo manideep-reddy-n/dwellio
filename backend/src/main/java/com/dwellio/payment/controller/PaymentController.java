@@ -13,8 +13,10 @@ import com.dwellio.payment.service.PaymentService;
 import com.dwellio.domain.enums.OrganizationType;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/organizations/{organizationId}/payments")
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -44,7 +47,11 @@ public class PaymentController {
     public List<PaymentResponse> list(@PathVariable UUID organizationId) {
         organizationRepository.findActiveById(organizationId).ifPresent(organization -> {
             if (organization.getType() == OrganizationType.GATED_COMMUNITY) {
-                gatedMaintenanceBillingService.syncOrganization(organization);
+                try {
+                    gatedMaintenanceBillingService.syncOrganization(organization);
+                } catch (Exception ex) {
+                    log.warn("Gated billing sync failed for org {}: {}", organizationId, ex.getMessage());
+                }
             }
         });
         return paymentService.listForOrganization(organizationId);

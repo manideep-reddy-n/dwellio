@@ -43,11 +43,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentService {
 
     private static final String SOURCE_PAYMENT = "PAYMENT";
@@ -69,7 +71,11 @@ public class PaymentService {
     @Transactional
     public List<PaymentResponse> listForOrganization(UUID organizationId) {
         Organization organization = accommodationGuard.requireOrganization(organizationId);
-        syncMonthlyPayments(organization);
+        try {
+            syncMonthlyPayments(organization);
+        } catch (Exception ex) {
+            log.warn("Rent payment sync failed for org {}: {}", organizationId, ex.getMessage());
+        }
         return paymentRepository.findAllActiveByOrganizationId(organizationId).stream()
                 .map(this::toResponse)
                 .toList();
@@ -79,7 +85,11 @@ public class PaymentService {
     public List<PaymentResponse> listMine(UUID organizationId) {
         MembershipContext context = authorizationService.requirePermission(organizationId, "payment:read_own");
         Organization organization = accommodationGuard.requireOrganization(organizationId);
-        syncMonthlyPayments(organization);
+        try {
+            syncMonthlyPayments(organization);
+        } catch (Exception ex) {
+            log.warn("Rent payment sync failed for org {}: {}", organizationId, ex.getMessage());
+        }
         List<Payment> payments = paymentRepository.findAllActiveByOrganizationIdAndMembershipId(
                 organizationId,
                 context.getMembershipId()
@@ -296,7 +306,7 @@ public class PaymentService {
         if (notificationRepository.existsRecentForPayment(
                 payment.getMembership().getUser().getId(),
                 organization.getId(),
-                NotificationType.PAYMENT_DUE.name(),
+                NotificationType.PAYMENT_DUE,
                 payment.getId().toString(),
                 Instant.now(clock).minus(1, ChronoUnit.HOURS)
         )) {
@@ -336,7 +346,7 @@ public class PaymentService {
         if (notificationRepository.existsRecentForPayment(
                 userId,
                 organization.getId(),
-                NotificationType.PAYMENT_DUE.name(),
+                NotificationType.PAYMENT_DUE,
                 payment.getId().toString(),
                 since
         )) {

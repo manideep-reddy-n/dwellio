@@ -4,30 +4,37 @@ spring:
   config:
     import:
       - optional:file:.env[.properties]
-      - optional:file:.env.${spring.profiles.active}[.properties]
-  profiles:
-    default: local
-    active: ${SPRING_PROFILES_ACTIVE:local}
   datasource:
     url: ${DATABASE_URL}
-    username: ${DATABASE_USERNAME}
-    password: ${DATABASE_PASSWORD}
+    username: ${DATABASE_USERNAME:}
+    password: ${DATABASE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DATABASE_POOL_SIZE:10}
+      minimum-idle: ${DATABASE_POOL_MIN_IDLE:2}
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      connection-init-sql: SET search_path TO ${DATABASE_SCHEMA:dwellio}
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
+        default_schema: ${DATABASE_SCHEMA:dwellio}
         jdbc:
           time_zone: UTC
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: false
+    schemas: ${DATABASE_SCHEMA:dwellio}
+    default-schema: ${DATABASE_SCHEMA:dwellio}
+    create-schemas: true
 
 server:
   port: ${PORT:8081}
+  forward-headers-strategy: framework
   servlet:
     context-path: /api/v1
 

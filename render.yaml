@@ -1,8 +1,6 @@
 # Render Blueprint — set secret values in the Render dashboard after deploy.
-# Docs: https://render.com/docs/blueprint-spec
 
 services:
-  # --- Backend (Spring Boot + Supabase) ---
   - type: web
     name: dwellio-api
     runtime: docker
@@ -11,8 +9,6 @@ services:
     plan: free
     healthCheckPath: /api/v1/health
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: production
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_SCHEMA
@@ -38,7 +34,6 @@ services:
       - key: APP_PUBLIC_URL
         sync: false
 
-  # --- Frontend (Next.js) ---
   - type: web
     name: dwellio-web
     runtime: node

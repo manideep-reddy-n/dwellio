@@ -4,6 +4,7 @@ import { apiConfig } from "@/config/api";
 export type MessageHandler = (message: IMessage) => void;
 
 let client: Client | null = null;
+let connectedToken: string | null = null;
 let userSubscription: StompSubscription | null = null;
 let orgSubscription: StompSubscription | null = null;
 
@@ -22,10 +23,19 @@ export function connectStomp(
   onConnect?: () => void,
   onDisconnect?: () => void,
 ): Client {
-  if (client?.active) {
+  if (client?.active && connectedToken === accessToken) {
     return client;
   }
 
+  if (client?.active) {
+    void client.deactivate();
+    client = null;
+    connectedToken = null;
+    userSubscription = null;
+    orgSubscription = null;
+  }
+
+  connectedToken = accessToken;
   client = new Client({
     brokerURL: buildWsUrl(accessToken),
     connectHeaders: {
@@ -38,6 +48,9 @@ export function connectStomp(
     onDisconnect: () => onDisconnect?.(),
     onStompError: (frame) => {
       console.error("STOMP error", frame.headers["message"], frame.body);
+    },
+    onWebSocketClose: () => {
+      connectedToken = null;
     },
   });
 
@@ -69,6 +82,7 @@ export function disconnectStomp() {
   orgSubscription?.unsubscribe();
   userSubscription = null;
   orgSubscription = null;
+  connectedToken = null;
 
   if (client?.active) {
     void client.deactivate();

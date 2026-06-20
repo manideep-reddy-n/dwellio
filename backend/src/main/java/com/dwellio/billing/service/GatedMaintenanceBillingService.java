@@ -215,7 +215,7 @@ public class GatedMaintenanceBillingService {
         if (notificationRepository.existsRecentForPayment(
                 payment.getMembership().getUser().getId(),
                 organization.getId(),
-                NotificationType.PAYMENT_DUE.name(),
+                NotificationType.PAYMENT_DUE,
                 payment.getId().toString(),
                 Instant.now(clock).minus(1, ChronoUnit.HOURS)
         )) {

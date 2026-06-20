@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -18,6 +19,7 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class StompJwtChannelInterceptor implements ChannelInterceptor {
@@ -36,10 +38,17 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
             return message;
         }
 
-        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-            authenticateConnect(accessor);
-        } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
-            authorizeSubscribe(accessor);
+        try {
+            if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+                authenticateConnect(accessor);
+            } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+                if (!authorizeSubscribe(accessor)) {
+                    return null;
+                }
+            }
+        } catch (RuntimeException ex) {
+            log.warn("WebSocket {} rejected: {}", accessor.getCommand(), ex.getMessage());
+            throw ex;
         }
 
         return message;
@@ -47,6 +56,16 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
 
     private void authenticateConnect(StompHeaderAccessor accessor) {
         if (accessor.getUser() != null) {
+            return;
+        }
+
+        UUID userIdFromHandshake = userIdFromSession(accessor);
+        if (userIdFromHandshake != null) {
+            userRepository.findActiveById(userIdFromHandshake).ifPresentOrElse(user -> {
+                accessor.setUser(new StompPrincipal(userIdFromHandshake));
+            }, () -> {
+                throw new IllegalArgumentException("User not found for WebSocket CONNECT");
+            });
             return;
         }
 
@@ -63,7 +82,7 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
         });
     }
 
-    private void authorizeSubscribe(StompHeaderAccessor accessor) {
+    private boolean authorizeSubscribe(StompHeaderAccessor accessor) {
         Principal user = accessor.getUser();
         if (user == null) {
             throw new IllegalArgumentException("Unauthenticated WebSocket subscription");
@@ -71,20 +90,37 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
 
         String destination = accessor.getDestination();
         if (destination == null) {
-            return;
+            return true;
         }
 
         Matcher matcher = ORG_TOPIC_PATTERN.matcher(destination);
         if (!matcher.matches()) {
-            return;
+            return true;
         }
 
         UUID organizationId = UUID.fromString(matcher.group(1));
         UUID userId = UUID.fromString(user.getName());
         boolean member = membershipRepository.existsActiveByUserIdAndOrganizationId(userId, organizationId);
         if (!member) {
-            throw new IllegalArgumentException("Not authorized to subscribe to organization topic");
+            log.debug("Ignoring org announcement subscription for user {} org {}", userId, organizationId);
+            return false;
         }
+        return true;
+    }
+
+    private UUID userIdFromSession(StompHeaderAccessor accessor) {
+        Map<String, Object> sessionAttributes = accessor.getSessionAttributes();
+        if (sessionAttributes == null) {
+            return null;
+        }
+        Object userId = sessionAttributes.get(JwtHandshakeInterceptor.ATTR_USER_ID);
+        if (userId instanceof UUID uuid) {
+            return uuid;
+        }
+        if (userId instanceof String value) {
+            return UUID.fromString(value);
+        }
+        return null;
     }
 
     private String resolveToken(StompHeaderAccessor accessor) {

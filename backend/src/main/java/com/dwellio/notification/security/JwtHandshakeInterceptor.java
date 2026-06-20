@@ -32,11 +32,12 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         }
 
         String token = servletRequest.getServletRequest().getParameter("token");
-        if (token != null && jwtService.isTokenValid(token)) {
-            UUID userId = jwtService.extractUserId(token);
-            attributes.put(ATTR_USER_ID, userId);
-            attributes.put(ATTR_ACCESS_TOKEN, token);
+        if (token == null || !jwtService.isTokenValid(token)) {
+            return false;
         }
+        UUID userId = jwtService.extractUserId(token);
+        attributes.put(ATTR_USER_ID, userId);
+        attributes.put(ATTR_ACCESS_TOKEN, token);
         return true;
     }
 
