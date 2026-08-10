@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -215,7 +216,9 @@ export function OrgSettingsForm({ orgId }: OrgSettingsFormProps) {
             />
             {logoSrc && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoSrc} alt="Organization logo" className="mt-2 h-16 w-auto rounded border" />
+              <div className="relative mt-2 h-16 w-32">
+                <Image src={logoSrc} alt="Organization logo" fill sizes="128px" className="rounded border object-contain" />
+              </div>
             )}
           </div>
         </CardContent>
@@ -327,12 +330,13 @@ export function OrgSettingsForm({ orgId }: OrgSettingsFormProps) {
                 const src = resolveMediaUrl(img.url);
                 if (!src) return null;
                 return (
-                  <div key={img.id} className="group relative overflow-hidden rounded-lg border">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                  <div key={img.id} className="group relative overflow-hidden rounded-lg border aspect-video w-full">
+                    <Image
                       src={src}
                       alt={img.caption ?? "Property"}
-                      className="aspect-video w-full object-cover"
+                      fill
+                      sizes="(max-width: 640px) 50vw, 33vw"
+                      className="object-cover"
                     />
                     <Button
                       type="button"

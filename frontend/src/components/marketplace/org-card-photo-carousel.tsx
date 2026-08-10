@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Building2 } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/media/resolve-url";
 import { cn } from "@/lib/utils";
@@ -37,7 +38,6 @@ export function OrgCardPhotoCarousel({ photos, orgName, href }: OrgCardPhotoCaro
     );
   }
 
-  const active = resolved[index] ?? resolved[0];
 
   function goPrev(event: React.MouseEvent) {
     event.preventDefault();
@@ -53,13 +53,21 @@ export function OrgCardPhotoCarousel({ photos, orgName, href }: OrgCardPhotoCaro
 
   return (
     <div className="relative aspect-[16/10] overflow-hidden bg-muted">
-      <Link href={href} className="block size-full">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={active.src}
-          alt={active.caption ?? `${orgName} property`}
-          className="size-full object-cover transition-opacity duration-300"
-        />
+      <Link href={href} className="block size-full relative">
+        {resolved.map((photo, i) => (
+          <Image
+            key={photo.src}
+            src={photo.src}
+            alt={photo.caption ?? `${orgName} property`}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            priority={i === 0}
+            className={cn(
+              "object-cover transition-opacity duration-300 ease-in-out",
+              i === index ? "opacity-100" : "opacity-0",
+            )}
+          />
+        ))}
       </Link>
 
       {resolved.length > 1 && (

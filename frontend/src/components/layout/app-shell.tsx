@@ -1,20 +1,16 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { Compass, Home, Menu, Radio, Search } from "lucide-react";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { MobileSidebar } from "@/components/layout/mobile-sidebar";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { OrgSwitcher } from "@/components/layout/org-switcher";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { siteConfig } from "@/config/site";
 import { useMyMemberships } from "@/hooks/use-memberships";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -38,10 +34,11 @@ const navIcons = {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { activeOrg, permissions, isOwner } = usePermissions();
   const { data: memberships = [] } = useMyMemberships();
   const toggleCommandPalette = useUiStore((s) => s.toggleCommandPalette);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   const orgSlug = activeOrg?.slug;
   const homeHref = resolveAppHome(memberships);
@@ -53,17 +50,42 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <CommandPalette />
+
+      {/* Mobile sidebar */}
+      <MobileSidebar open={sidebarOpen} onClose={closeSidebar} />
+
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-none sm:gap-3">
-            <Link href={homeHref} className="shrink-0 font-semibold">
-              {siteConfig.name}
+            {/* Mobile hamburger → opens sidebar */}
+            <button
+              type="button"
+              aria-label="Open navigation menu"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "shrink-0 md:hidden",
+              )}
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="size-5" />
+            </button>
+
+            <Link href={homeHref} className="flex shrink-0 items-center gap-2 font-semibold tracking-tight">
+              <Image
+                src="/dwellio-logo.webp"
+                alt="Dwellio Logo"
+                width={24}
+                height={24}
+                className="size-6 object-contain rounded-md"
+              />
+              <span>{siteConfig.name}</span>
             </Link>
             <div className="min-w-0 flex-1 sm:flex-none">
               <OrgSwitcher />
             </div>
           </div>
 
+          {/* Desktop nav — unchanged */}
           <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
             <div className="hidden items-center gap-1 md:flex">
               {!hasOrgHomeNav && (
@@ -128,38 +150,6 @@ export function AppShell({ children }: AppShellProps) {
                 );
               })}
             </div>
-
-            {(navItems.length > 0 || !hasOrgHomeNav) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
-                  aria-label="Open navigation menu"
-                >
-                  <Menu className="size-5" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  {!hasOrgHomeNav && (
-                    <DropdownMenuItem onClick={() => router.push("/")}>
-                      Marketing home
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => router.push("/explore")}>
-                    Explore
-                  </DropdownMenuItem>
-                  {residentOnly && memberships[0] && (
-                    <DropdownMenuItem onClick={() => router.push(orgHomePath(memberships[0]))}>
-                      My stay
-                    </DropdownMenuItem>
-                  )}
-                  {navItems.length > 0 && <DropdownMenuSeparator />}
-                  {navItems.map(({ href, label }) => (
-                    <DropdownMenuItem key={href} onClick={() => router.push(href)}>
-                      {label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
 
             <NotificationBell />
             <AccountMenu />

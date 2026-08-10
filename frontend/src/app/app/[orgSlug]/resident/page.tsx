@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, History } from "lucide-react";
 import { AccommodationSummaryCard } from "@/components/resident/accommodation-summary-card";
 import { AnnouncementFeed } from "@/components/resident/announcement-feed";
 import { ComplaintCreateDialog } from "@/components/resident/complaint-create-dialog";
@@ -47,6 +47,15 @@ export default function ResidentHomePage() {
           orgSlug={orgSlug ?? ""}
           orgLogoUrl={activeOrg?.logoUrl}
         />
+
+        <Link
+          href="/app/timeline"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+        >
+          <History className="size-3.5" />
+          View your full stay history
+          <ChevronRight className="size-3.5" />
+        </Link>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <MyRoleCard />

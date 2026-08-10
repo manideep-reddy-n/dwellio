@@ -12,9 +12,6 @@ export function OrgProfileLocationMap({ latitude, longitude, name }: OrgProfileL
   return (
     <section className="mb-10">
       <h2 className="text-xl font-semibold">Location</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Hold Ctrl while scrolling or dragging to zoom and pan the map.
-      </p>
       <div className="mt-4 overflow-hidden rounded-xl border">
         <OrgLocationMap lat={latitude} lng={longitude} height={280} />
       </div>

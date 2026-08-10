@@ -137,6 +137,60 @@ public class InvoiceService {
         return toResponse(saved, false);
     }
 
+    @Transactional
+    public Invoice autoGenerateAndShare(Organization organization, Payment payment, User user) {
+        Invoice invoice = invoiceRepository.findActiveByPaymentId(payment.getId()).orElse(null);
+        if (invoice != null) {
+            if (invoice.getStatus() != InvoiceStatus.SHARED) {
+                invoice.setStatus(InvoiceStatus.SHARED);
+                invoice.setSharedAt(Instant.now(clock));
+                invoiceRepository.save(invoice);
+            }
+            return invoice;
+        }
+
+        String token = randomToken();
+        invoice = new Invoice();
+        invoice.setId(UUID.randomUUID());
+        invoice.setPayment(payment);
+        invoice.setOrganization(organization);
+        invoice.setInvoiceNumber(buildInvoiceNumber(organization));
+        invoice.setVerificationToken(token);
+        invoice.setVerificationHash(sha256(token));
+        invoice.setStatus(InvoiceStatus.SHARED);
+        invoice.setGeneratedAt(Instant.now(clock));
+        invoice.setSharedAt(Instant.now(clock));
+        invoice.setGeneratedBy(user);
+
+        try {
+            byte[] pdfBytes = invoicePdfRenderer.render(organization, payment, invoice);
+            MediaStorageService.StoredMedia stored = mediaStorage.storeRaw(
+                    pdfBytes, "invoices", invoice.getId().toString() + ".pdf");
+            invoice.setPdfPath(stored.url());
+        } catch (IOException exception) {
+            throw new BadRequestException("Could not generate invoice PDF");
+        }
+
+        Invoice saved = invoiceRepository.saveAndFlush(invoice);
+
+        String slug = organization.getSlug();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("paymentId", payment.getId().toString());
+        payload.put("invoiceId", saved.getId().toString());
+        payload.put("organizationSlug", slug);
+        payload.put("targetPath", "/app/" + slug + "/resident/payments");
+        notificationService.create(
+                payment.getMembership().getUser().getId(),
+                organization.getId(),
+                NotificationType.INVOICE_SHARED,
+                "Invoice available",
+                "Your invoice " + saved.getInvoiceNumber() + " is ready to view and download.",
+                payload
+        );
+
+        return saved;
+    }
+
     @Transactional(readOnly = true)
     public byte[] downloadPdfForPayment(UUID organizationId, UUID paymentId, boolean residentView) {
         Invoice invoice = invoiceRepository.findActiveByPaymentId(paymentId)

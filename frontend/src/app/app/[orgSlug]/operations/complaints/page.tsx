@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, X } from "lucide-react";
 import { PageTransition } from "@/components/shared/page-transition";
+import { PageTitle } from "@/components/shared/page-title";
 import { ComplaintKanban } from "@/components/operations/complaint-kanban";
 import { OperationsShell } from "@/components/operations/operations-shell";
 import { OpsGuard } from "@/components/operations/ops-guard";
@@ -24,6 +25,7 @@ export default function ComplaintsPage() {
 
   return (
     <PageTransition>
+      <PageTitle title="Complaints" />
       <OpsGuard permission={PERMISSIONS.COMPLAINT_READ}>
         <OperationsShell
           orgSlug={orgSlug}

@@ -2,8 +2,10 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { PageTitle } from "@/components/shared/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,12 +43,25 @@ function LoginForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Sign in</CardTitle>
-        <CardDescription>Access your resident or operations dashboard.</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <>
+      <PageTitle title="Sign in" />
+      <Card>
+        <CardHeader className="space-y-3">
+          <div className="flex items-center gap-2.5">
+            <Image
+              src="/dwellio-logo.webp"
+              alt="Dwellio Logo"
+              width={36}
+              height={36}
+              className="size-9 object-contain rounded-xl"
+            />
+            <div>
+              <CardTitle>Sign in</CardTitle>
+              <CardDescription>Access your resident or operations dashboard.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -83,6 +98,7 @@ function LoginForm() {
         </p>
       </CardContent>
     </Card>
+    </>
   );
 }
 

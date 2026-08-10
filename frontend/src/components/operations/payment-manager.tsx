@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -318,40 +319,16 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
             )}
           </p>
 
-          {(payment.status === "PAID" || payment.status === "PARTIAL") && (
+          {(payment.status === "PAID" || payment.status === "PARTIAL") && payment.invoiceId && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {!payment.invoiceId && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="bg-background/70"
-                  disabled={generateInvoice.isPending}
-                  onClick={() => void handleGenerateInvoice(payment)}
-                >
-                  Generate invoice
-                </Button>
-              )}
-              {payment.invoiceId && !payment.invoiceShared && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="bg-background/70"
-                  disabled={shareInvoice.isPending}
-                  onClick={() => void handleShareInvoice(payment)}
-                >
-                  Share invoice
-                </Button>
-              )}
-              {payment.invoiceId && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="bg-background/70"
-                  onClick={() => void handleDownload(payment)}
-                >
-                  Download PDF
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-background/70"
+                onClick={() => void handleDownload(payment)}
+              >
+                Download PDF
+              </Button>
               {payment.invoiceNumber && (
                 <span className="self-center text-xs opacity-70">{payment.invoiceNumber}</span>
               )}
@@ -394,9 +371,23 @@ export function PaymentManager({ orgId }: PaymentManagerProps) {
               </div>
             </div>
           ) : (
-            <Button size="sm" variant="outline" className="mt-3 bg-background/70" onClick={() => startEdit(payment)}>
-              Update payment
-            </Button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="bg-background/70" onClick={() => startEdit(payment)}>
+                Update payment
+              </Button>
+              {payment.status !== "PAID" && payment.residentPhone && (
+                <a
+                  href={`tel:${payment.residentPhone}`}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "border-emerald-300 bg-emerald-50/60 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 font-medium",
+                  )}
+                >
+                  <Phone className="mr-1.5 size-3.5 text-emerald-600" />
+                  Call resident
+                </a>
+              )}
+            </div>
           )}
         </div>
       ))}

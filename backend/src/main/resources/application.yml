@@ -61,3 +61,7 @@ dwellio:
     vapid-public-key: ${VAPID_PUBLIC_KEY:}
     vapid-private-key: ${VAPID_PRIVATE_KEY:}
     subject: ${VAPID_SUBJECT:mailto:admin@dwellio.local}
+  cashfree:
+    app-id: ${CASHFREE_APP_ID:}
+    secret-key: ${CASHFREE_SECRET_KEY:}
+    environment: ${CASHFREE_ENVIRONMENT:SANDBOX}

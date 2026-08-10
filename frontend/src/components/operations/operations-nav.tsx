@@ -74,7 +74,7 @@ export function OperationsNav({ orgSlug }: OperationsNavProps) {
   const base = `/app/${orgSlug}`;
 
   return (
-    <nav className="-mx-1 flex gap-1 overflow-x-auto pb-1">
+    <nav className="-mx-1 hidden gap-1 overflow-x-auto pb-1 md:flex">
       {navItems.map(({ href, suffix, label, icon: Icon, perm, foodOnly, gatedOnly }) => {
         if (foodOnly && !showFoodMenu) return null;
         if (gatedOnly && org?.type !== "GATED_COMMUNITY") return null;

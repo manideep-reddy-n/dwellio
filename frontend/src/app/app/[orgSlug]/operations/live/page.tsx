@@ -1,6 +1,7 @@
 "use client";
 
 import { PageTransition } from "@/components/shared/page-transition";
+import { PageTitle } from "@/components/shared/page-title";
 import { LiveOpsCenter } from "@/components/operations/live-ops-center";
 import { OperationsShell } from "@/components/operations/operations-shell";
 import { OpsGuard } from "@/components/operations/ops-guard";
@@ -13,6 +14,7 @@ export default function LiveOperationsPage() {
 
   return (
     <PageTransition>
+      <PageTitle title="Live operations" />
       <OpsGuard>
         <OperationsShell
           orgSlug={orgSlug}

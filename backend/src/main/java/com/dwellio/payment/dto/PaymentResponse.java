@@ -13,6 +13,7 @@ public record PaymentResponse(
         UUID membershipId,
         String residentName,
         String residentEmail,
+        String residentPhone,
         LocalDate billingMonth,
         BigDecimal amount,
         BigDecimal amountPaid,

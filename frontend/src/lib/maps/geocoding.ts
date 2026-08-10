@@ -32,38 +32,39 @@ export function parseCoordinate(value: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function component(
-  components: google.maps.GeocoderAddressComponent[],
-  type: string,
-  short = false,
-): string | undefined {
-  const match = components.find((c) => c.types.includes(type));
-  if (!match) return undefined;
-  return short ? match.short_name : match.long_name;
+export interface NominatimAddress {
+  road?: string;
+  suburb?: string;
+  neighbourhood?: string;
+  village?: string;
+  city_district?: string;
+  city?: string;
+  town?: string;
+  county?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
 }
 
-/** Parse a Google Geocoder result into Dwellio address fields. */
-export function geocoderResultToPlace(result: google.maps.GeocoderResult): GeocodeResult {
-  const components = result.address_components ?? [];
-  const location = result.geometry.location;
+export interface NominatimResult {
+  place_id?: number;
+  lat: string;
+  lon: string;
+  display_name: string;
+  address: NominatimAddress;
+}
 
+/** Parse a Nominatim result into Dwellio address fields. */
+export function nominatimResultToPlace(result: NominatimResult): GeocodeResult {
+  const address = result.address || {};
   return {
-    displayName: result.formatted_address,
-    lat: location.lat(),
-    lng: location.lng(),
-    city:
-      component(components, "locality") ??
-      component(components, "administrative_area_level_2") ??
-      component(components, "administrative_area_level_1"),
-    area:
-      component(components, "sublocality_level_1") ??
-      component(components, "sublocality") ??
-      component(components, "neighborhood"),
-    state: component(components, "administrative_area_level_1"),
-    postalCode: component(components, "postal_code"),
-    addressLine:
-      [component(components, "street_number"), component(components, "route")]
-        .filter(Boolean)
-        .join(" ") || undefined,
+    displayName: result.display_name,
+    lat: parseFloat(result.lat),
+    lng: parseFloat(result.lon),
+    city: address.city || address.town || address.county || address.city_district,
+    area: address.suburb || address.neighbourhood || address.village,
+    state: address.state,
+    postalCode: address.postcode,
+    addressLine: address.road || undefined,
   };
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { PageTransition } from "@/components/shared/page-transition";
+import { PageTitle } from "@/components/shared/page-title";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +24,7 @@ export default function OrganizationsPage() {
 
   return (
     <PageTransition>
+      <PageTitle title={residentOnly ? "My stays" : "My organizations"} />
       <div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>

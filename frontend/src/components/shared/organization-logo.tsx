@@ -1,4 +1,5 @@
 import { Building2 } from "lucide-react";
+import Image from "next/image";
 import { resolveMediaUrl } from "@/lib/media/resolve-url";
 import { cn } from "@/lib/utils";
 
@@ -26,15 +27,15 @@ export function OrganizationLogo({
 
   if (src) {
     return (
-      <img
-        src={src}
-        alt=""
-        className={cn(
-          "shrink-0 rounded-md border bg-background object-contain p-0.5",
-          sizeClasses[size],
-          className,
-        )}
-      />
+      <div className={cn("relative shrink-0", sizeClasses[size], className)}>
+        <Image
+          src={src}
+          alt=""
+          fill
+          sizes="56px"
+          className="rounded-md border bg-background object-contain p-0.5"
+        />
+      </div>
     );
   }
 

@@ -18,6 +18,7 @@ import com.dwellio.domain.enums.NotificationType;
 import com.dwellio.domain.enums.OrganizationType;
 import com.dwellio.domain.enums.PaymentStatus;
 import com.dwellio.invoice.repository.InvoiceRepository;
+import com.dwellio.invoice.service.InvoiceService;
 import com.dwellio.membership.repository.MembershipRepository;
 import com.dwellio.notification.repository.NotificationRepository;
 import com.dwellio.notification.service.NotificationService;
@@ -32,6 +33,12 @@ import com.dwellio.domain.enums.ActivityEventCategory;
 import com.dwellio.ledger.service.LedgerService;
 import com.dwellio.payment.event.PaymentEventPublisher;
 import com.dwellio.payment.repository.PaymentRepository;
+import com.dwellio.payment.repository.PaymentTransactionRepository;
+import com.dwellio.payment.service.CashfreeService;
+import com.dwellio.payment.dto.CheckoutRequest;
+import com.dwellio.payment.dto.CheckoutResponse;
+import com.dwellio.domain.entity.PaymentTransaction;
+import com.dwellio.domain.enums.TransactionStatus;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -67,6 +74,9 @@ public class PaymentService {
     private final AccommodationGuard accommodationGuard;
     private final AuthorizationService authorizationService;
     private final Clock clock;
+    private final CashfreeService cashfreeService;
+    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final InvoiceService invoiceService;
 
     @Transactional
     public List<PaymentResponse> listForOrganization(UUID organizationId) {
@@ -146,6 +156,13 @@ public class PaymentService {
         payment.setRecordedBy(referenceUser(principal.getId()));
 
         Payment saved = paymentRepository.save(payment);
+        if (saved.getStatus() == PaymentStatus.PAID) {
+            try {
+                invoiceService.autoGenerateAndShare(saved.getOrganization(), saved, referenceUser(principal.getId()));
+            } catch (Exception ex) {
+                log.error("Failed to auto-generate invoice for payment {}", saved.getId(), ex);
+            }
+        }
         ledgerService.recordPaymentReceived(saved, previousPaid, referenceUser(principal.getId()));
         recordPaymentReceived(saved);
         notifyPaymentRecorded(organizationId, saved);
@@ -156,6 +173,89 @@ public class PaymentService {
     @Transactional
     public void syncAllOrganizations() {
         organizationRepository.findAllActive().forEach(this::syncMonthlyPayments);
+    }
+
+    @Transactional
+    public CheckoutResponse initiateCheckout(UUID organizationId, UUID paymentId, CheckoutRequest request, UserPrincipal principal) {
+        authorizationService.requirePermission(organizationId, "payment:read_own");
+        Payment payment = paymentRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(paymentId, organizationId)
+                .orElseThrow(() -> new NotFoundException("Payment not found"));
+
+        BigDecimal pendingAmount = payment.getAmount().subtract(payment.getAmountPaid());
+        if (request.amount().compareTo(pendingAmount) > 0) {
+            throw new BadRequestException("Cannot pay more than pending amount");
+        }
+
+        String orderId = "order_" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        User user = payment.getMembership().getUser();
+        
+        CashfreeService.CashfreeOrderResponse cfResponse = cashfreeService.createOrder(
+            orderId,
+            request.amount(),
+            user.getId().toString(),
+            user.getFullName(),
+            user.getPhone(),
+            user.getEmail()
+        );
+
+        PaymentTransaction transaction = new PaymentTransaction();
+        transaction.setId(UUID.randomUUID());
+        transaction.setPayment(payment);
+        transaction.setGatewayOrderId(cfResponse.orderId());
+        transaction.setGatewaySessionId(cfResponse.paymentSessionId());
+        transaction.setAmount(request.amount());
+        transaction.setStatus(TransactionStatus.PENDING);
+        paymentTransactionRepository.save(transaction);
+
+        return new CheckoutResponse(cfResponse.paymentSessionId(), cfResponse.orderId());
+    }
+
+    @Transactional
+    public PaymentResponse verifyPayment(UUID organizationId, UUID paymentId, String orderId) {
+        PaymentTransaction transaction = paymentTransactionRepository.findByGatewayOrderId(orderId)
+                .orElseThrow(() -> new NotFoundException("Transaction not found"));
+
+        if (!transaction.getPayment().getId().equals(paymentId) || !transaction.getPayment().getOrganization().getId().equals(organizationId)) {
+            throw new BadRequestException("Payment mismatch");
+        }
+
+        if (transaction.getStatus() == TransactionStatus.SUCCESS) {
+            return toResponse(transaction.getPayment());
+        }
+
+        String status = cashfreeService.getOrderStatus(orderId);
+        if ("PAID".equalsIgnoreCase(status)) {
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            
+            Payment payment = transaction.getPayment();
+            BigDecimal previousPaid = payment.getAmountPaid();
+            BigDecimal newAmountPaid = previousPaid.add(transaction.getAmount());
+            payment.setAmountPaid(newAmountPaid);
+            payment.setStatus(resolveStatus(payment.getAmount(), newAmountPaid, payment.getStatus()));
+            if (payment.getStatus() == PaymentStatus.PAID) {
+                payment.setPaidAt(Instant.now(clock));
+            }
+            payment = paymentRepository.save(payment);
+            if (payment.getStatus() == PaymentStatus.PAID) {
+                try {
+                    invoiceService.autoGenerateAndShare(payment.getOrganization(), payment, payment.getMembership().getUser());
+                } catch (Exception ex) {
+                    log.error("Failed to auto-generate invoice for payment {}", payment.getId(), ex);
+                }
+            }
+            
+            ledgerService.recordPaymentReceived(payment, previousPaid, payment.getMembership().getUser());
+            recordPaymentReceived(payment);
+            notifyPaymentRecorded(organizationId, payment);
+            paymentEventPublisher.publishMetricsChanged(organizationId);
+        } else if ("ACTIVE".equalsIgnoreCase(status)) {
+            // Still pending
+        } else {
+            transaction.setStatus(TransactionStatus.FAILED);
+        }
+        
+        paymentTransactionRepository.save(transaction);
+        return toResponse(transaction.getPayment());
     }
 
     private Payment createManualCharge(
@@ -273,6 +373,7 @@ public class PaymentService {
                 payment.getMembership().getId(),
                 payment.getMembership().getUser().getFullName(),
                 payment.getMembership().getUser().getEmail(),
+                payment.getMembership().getUser().getPhone(),
                 payment.getBillingMonth(),
                 payment.getAmount(),
                 payment.getAmountPaid(),
@@ -329,15 +430,36 @@ public class PaymentService {
                         ? "partially recorded"
                         : "updated";
 
+        String desc = payment.getDescription() != null ? payment.getDescription() : payment.getChargeType().name();
+        String residentName = payment.getMembership().getUser().getFullName();
+
         notificationService.create(
                 payment.getMembership().getUser().getId(),
                 organizationId,
                 NotificationType.PAYMENT_RECORDED,
                 "Payment " + statusLabel,
-                (payment.getDescription() != null ? payment.getDescription() : payment.getChargeType().name())
-                        + " — ₹" + payment.getAmountPaid() + " of ₹" + payment.getAmount() + " recorded.",
+                desc + " — ₹" + payment.getAmountPaid() + " of ₹" + payment.getAmount() + " recorded.",
                 payload
         );
+
+        for (Membership owner : membershipRepository.findActiveOwnersByOrganizationId(organizationId)) {
+            if (owner.getUser().getId().equals(payment.getMembership().getUser().getId())) {
+                continue;
+            }
+            Map<String, Object> ownerPayload = new HashMap<>();
+            ownerPayload.put("paymentId", payment.getId().toString());
+            ownerPayload.put("organizationSlug", slug);
+            ownerPayload.put("targetPath", "/app/" + slug + "/operations/payments");
+
+            notificationService.create(
+                    owner.getUser().getId(),
+                    organizationId,
+                    NotificationType.PAYMENT_RECORDED,
+                    "Payment Received: " + residentName,
+                    residentName + " paid ₹" + payment.getAmountPaid() + " for " + desc + ".",
+                    ownerPayload
+            );
+        }
     }
 
     private void notifyPaymentDue(Organization organization, Payment payment) {

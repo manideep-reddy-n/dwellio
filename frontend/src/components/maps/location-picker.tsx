@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Crosshair, Loader2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GoogleMapsProvider } from "@/components/maps/google-maps-provider";
-import { LocationPickerMap } from "@/components/maps/google-maps";
 import { PlaceSearchInput } from "@/components/maps/place-search-input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DEFAULT_MAP_CENTER,
   parseCoordinate,
@@ -15,6 +15,11 @@ import {
 } from "@/lib/maps/geocoding";
 import { getCurrentPosition, type GeolocationStatus } from "@/lib/maps/geolocation";
 import { toast } from "sonner";
+
+const LocationPickerMap = dynamic(
+  () => import("@/components/maps/osm-maps").then((m) => m.LocationPickerMap),
+  { ssr: false, loading: () => <Skeleton className="h-[280px] w-full rounded-xl" /> },
+);
 
 export interface LocationValue {
   latitude: number;
@@ -90,67 +95,65 @@ export function LocationPicker({ value, onChange, onAddressFields }: LocationPic
   }
 
   return (
-    <GoogleMapsProvider>
-      <div className="space-y-3">
-        <PlaceSearchInput onSelect={applyPlace} />
+    <div className="space-y-3">
+      <PlaceSearchInput onSelect={applyPlace} />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            disabled={geoStatus === "requesting"}
-            onClick={() => void useCurrentLocation()}
-          >
-            {geoStatus === "requesting" ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Crosshair className="size-3.5" />
-            )}
-            Use my location
-          </Button>
-          {geoStatus === "denied" && (
-            <span className="text-xs text-muted-foreground">
-              Allow location access in your browser for automatic pin placement.
-            </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          disabled={geoStatus === "requesting"}
+          onClick={() => void useCurrentLocation()}
+        >
+          {geoStatus === "requesting" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Crosshair className="size-3.5" />
           )}
+          Use my location
+        </Button>
+        {geoStatus === "denied" && (
+          <span className="text-xs text-muted-foreground">
+            Allow location access in your browser for automatic pin placement.
+          </span>
+        )}
+      </div>
+
+      <LocationPickerMap lat={lat} lng={lng} onChange={moveMarker} />
+
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <MapPin className="size-3.5" />
+        Drag the pin, click the map, or search places.
+      </p>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="manual-lat">Latitude</Label>
+          <Input
+            id="manual-lat"
+            inputMode="decimal"
+            value={value?.latitude ?? ""}
+            onChange={(e) => {
+              const parsed = parseCoordinate(e.target.value);
+              if (parsed != null) moveMarker(parsed, lng);
+            }}
+          />
         </div>
-
-        <LocationPickerMap lat={lat} lng={lng} onChange={moveMarker} />
-
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="size-3.5" />
-          Drag the pin, click the map, or search places. Hold Ctrl to zoom and pan the map.
-        </p>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label htmlFor="manual-lat">Latitude</Label>
-            <Input
-              id="manual-lat"
-              inputMode="decimal"
-              value={value?.latitude ?? ""}
-              onChange={(e) => {
-                const parsed = parseCoordinate(e.target.value);
-                if (parsed != null) moveMarker(parsed, lng);
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="manual-lng">Longitude</Label>
-            <Input
-              id="manual-lng"
-              inputMode="decimal"
-              value={value?.longitude ?? ""}
-              onChange={(e) => {
-                const parsed = parseCoordinate(e.target.value);
-                if (parsed != null) moveMarker(lat, parsed);
-              }}
-            />
-          </div>
+        <div className="space-y-1">
+          <Label htmlFor="manual-lng">Longitude</Label>
+          <Input
+            id="manual-lng"
+            inputMode="decimal"
+            value={value?.longitude ?? ""}
+            onChange={(e) => {
+              const parsed = parseCoordinate(e.target.value);
+              if (parsed != null) moveMarker(lat, parsed);
+            }}
+          />
         </div>
       </div>
-    </GoogleMapsProvider>
+    </div>
   );
 }

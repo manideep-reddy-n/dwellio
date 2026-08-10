@@ -90,4 +90,14 @@ public class ActivityEventService {
                 .map(ActivityEventResponse::from)
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public List<ActivityEventResponse> listAllMine() {
+        UUID userId = authorizationService.currentPrincipal().getId();
+        return activityEventRepository
+                .findAllByUserId(userId)
+                .stream()
+                .map(ActivityEventResponse::from)
+                .toList();
+    }
 }

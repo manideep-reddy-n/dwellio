@@ -13,6 +13,7 @@ import { formatDate } from "@/lib/format/datetime";
 import { cn } from "@/lib/utils";
 import type { PaymentStatus } from "@/lib/api/payments";
 import { toast } from "sonner";
+import { PaymentCheckout } from "@/components/resident/payment-checkout";
 
 const statusStyles: Record<PaymentStatus, string> = {
   PAID: "border-emerald-300 bg-emerald-50/50",
@@ -79,6 +80,9 @@ export default function ResidentPaymentsPage() {
                 >
                   Download invoice
                 </Button>
+              )}
+              {orgId && p.status !== "PAID" && (
+                <PaymentCheckout orgId={orgId} payment={p} />
               )}
             </CardContent>
           </Card>

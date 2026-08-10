@@ -39,7 +39,7 @@ function ExploreMapContent({ orgs }: ExploreMapSectionProps) {
       lat: Number(org.latitude),
       lng: Number(org.longitude),
       city: org.city,
-      area: org.area,
+      area: org.area ?? undefined,
     }))
     .filter((m) => Number.isFinite(m.lat) && Number.isFinite(m.lng));
 

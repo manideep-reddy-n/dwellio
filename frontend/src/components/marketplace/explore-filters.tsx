@@ -68,7 +68,7 @@ export function ExploreFilters() {
         </select>
       </div>
       <div className="flex items-end sm:col-span-2 lg:col-span-4">
-        <Button type="submit">Search</Button>
+        <Button type="submit" className="w-full sm:w-auto">Search</Button>
       </div>
     </form>
   );

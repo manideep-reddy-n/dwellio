@@ -11,18 +11,20 @@ public interface ActivityEventRepository extends JpaRepository<ActivityEvent, UU
 
     @Query("""
             SELECT e FROM ActivityEvent e
+            JOIN FETCH e.organization o
             LEFT JOIN FETCH e.membership m
             LEFT JOIN FETCH m.user
-            WHERE e.organization.id = :organizationId
+            WHERE o.id = :organizationId
             ORDER BY e.occurredAt DESC, e.id DESC
             """)
     List<ActivityEvent> findByOrganization(@Param("organizationId") UUID organizationId);
 
     @Query("""
             SELECT e FROM ActivityEvent e
+            JOIN FETCH e.organization o
             LEFT JOIN FETCH e.membership m
             LEFT JOIN FETCH m.user
-            WHERE e.organization.id = :organizationId
+            WHERE o.id = :organizationId
               AND e.membership.id = :membershipId
             ORDER BY e.occurredAt DESC, e.id DESC
             """)
@@ -49,4 +51,15 @@ public interface ActivityEventRepository extends JpaRepository<ActivityEvent, UU
             ORDER BY e.occurredAt DESC
             """)
     List<ActivityEvent> findRecentPlatformWide(org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT e FROM ActivityEvent e
+            JOIN FETCH e.organization o
+            LEFT JOIN FETCH e.membership m
+            LEFT JOIN FETCH m.user u
+            WHERE m.user.id = :userId
+              AND o.deletedAt IS NULL
+            ORDER BY e.occurredAt DESC, e.id DESC
+            """)
+    List<ActivityEvent> findAllByUserId(@Param("userId") UUID userId);
 }

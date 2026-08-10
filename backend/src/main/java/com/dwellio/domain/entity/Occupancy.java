@@ -18,8 +18,15 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
+import jakarta.persistence.Index;
+
 @Entity
-@Table(name = "occupancies")
+@Table(name = "occupancies", indexes = {
+        @Index(name = "idx_occupancies_org_id", columnList = "organization_id"),
+        @Index(name = "idx_occupancies_membership_id", columnList = "membership_id"),
+        @Index(name = "idx_occupancies_bed_id", columnList = "bed_id"),
+        @Index(name = "idx_occupancies_unit_space_id", columnList = "unit_space_id")
+})
 @Getter
 @Setter
 public class Occupancy extends BaseEntity {

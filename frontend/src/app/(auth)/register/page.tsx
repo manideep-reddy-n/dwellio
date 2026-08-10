@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Building2, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { PageTitle } from "@/components/shared/page-title";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,10 +61,23 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create account</CardTitle>
-        <CardDescription>Choose how you will use Dwellio, then set up your profile.</CardDescription>
+    <>
+      <PageTitle title="Create account" />
+      <Card>
+      <CardHeader className="space-y-3">
+        <div className="flex items-center gap-2.5">
+          <Image
+            src="/dwellio-logo.webp"
+            alt="Dwellio Logo"
+            width={36}
+            height={36}
+            className="size-9 object-contain rounded-xl"
+          />
+          <div>
+            <CardTitle>Create account</CardTitle>
+            <CardDescription>Choose how you will use Dwellio, then set up your profile.</CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -146,5 +161,6 @@ export default function RegisterPage() {
         </p>
       </CardContent>
     </Card>
+    </>
   );
 }

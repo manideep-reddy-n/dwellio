@@ -22,3 +22,12 @@ export function useMyTimeline(orgId: string | undefined) {
     enabled: authReady && Boolean(orgId),
   });
 }
+
+export function useAllMyTimeline() {
+  const { authReady } = useAuthReady();
+  return useQuery({
+    queryKey: ["dwellio", "timeline", "global", "mine"],
+    queryFn: () => timelineApi.listAllMine(),
+    enabled: authReady,
+  });
+}

@@ -9,7 +9,7 @@ import { fetchMarketplaceOrgs } from "@/lib/api/marketplace-server";
 import type { OrganizationType } from "@/types/enums";
 
 export const metadata: Metadata = {
-  title: "Explore",
+  title: "Explore stays",
 };
 
 interface ExplorePageProps {

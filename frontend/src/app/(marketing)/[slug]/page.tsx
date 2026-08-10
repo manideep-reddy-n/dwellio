@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { OrganizationLogo } from "@/components/shared/organization-logo";
@@ -26,6 +27,21 @@ import { hostelAudienceLabel } from "@/lib/copy/home-messaging";
 
 interface OrgProfilePageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: OrgProfilePageProps): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const org = await fetchMarketplaceOrg(slug);
+    return {
+      title: org.name,
+      description: org.description ?? `View details, reviews, and availability for ${org.name} on Dwellio.`,
+    };
+  } catch {
+    return {
+      title: "Property Details",
+    };
+  }
 }
 
 export default async function OrgProfilePage({ params }: OrgProfilePageProps) {

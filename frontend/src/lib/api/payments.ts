@@ -20,6 +20,7 @@ export interface PaymentRecord {
   membershipId: string;
   residentName: string;
   residentEmail: string;
+  residentPhone: string | null;
   billingMonth: string;
   amount: number;
   amountPaid: number;
@@ -56,6 +57,11 @@ export interface InvoiceVerification {
   paymentStatus: PaymentStatus | null;
   verificationStatus: InvoiceStatus | null;
   result: string;
+}
+
+export interface CheckoutResponse {
+  paymentSessionId: string;
+  orderId: string;
 }
 
 export interface CreateManualChargeInput {
@@ -115,5 +121,19 @@ export const paymentsApi = {
       apiConfig.baseUrl,
       `/public/invoices/verify?n=${encodeURIComponent(invoiceNumber)}&t=${encodeURIComponent(token)}`,
       { skipAuth: true },
+    ),
+
+  checkout: (orgId: string, paymentId: string, amount: number) =>
+    apiRequest<CheckoutResponse>(
+      apiConfig.baseUrl,
+      `/organizations/${orgId}/payments/${paymentId}/checkout`,
+      { method: "POST", body: { amount } },
+    ),
+
+  verifyPayment: (orgId: string, paymentId: string, orderId: string) =>
+    apiRequest<PaymentRecord>(
+      apiConfig.baseUrl,
+      `/organizations/${orgId}/payments/${paymentId}/verify/${orderId}`,
+      { method: "POST" },
     ),
 };

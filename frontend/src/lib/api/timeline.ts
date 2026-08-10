@@ -12,6 +12,8 @@ export interface ActivityEvent {
   id: string;
   membershipId: string | null;
   residentName: string | null;
+  organizationName: string;
+  organizationSlug: string;
   eventCategory: ActivityEventCategory;
   eventType: string;
   title: string;
@@ -31,4 +33,7 @@ export const timelineApi = {
 
   listMine: (orgId: string) =>
     apiRequest<ActivityEvent[]>(apiConfig.baseUrl, `/organizations/${orgId}/timeline/mine`),
+
+  listAllMine: () =>
+    apiRequest<ActivityEvent[]>(apiConfig.baseUrl, `/me/timeline`),
 };

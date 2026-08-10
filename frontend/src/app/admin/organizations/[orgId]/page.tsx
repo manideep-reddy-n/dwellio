@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -175,8 +176,9 @@ export default function AdminOrganizationDetailPage() {
                 <p className="col-span-full text-rose-600">Rejection: {org.rejectionReason}</p>
               )}
               {org.logoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={org.logoUrl} alt="Logo" className="col-span-full h-16 w-auto rounded border" />
+                <div className="relative col-span-full h-16 w-32 mt-2">
+                  <Image src={org.logoUrl} alt="Logo" fill sizes="128px" className="rounded border object-contain" />
+                </div>
               )}
             </CardContent>
           </Card>

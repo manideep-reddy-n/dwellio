@@ -17,10 +17,17 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
+import jakarta.persistence.Index;
+
 @Entity
 @Table(
         name = "memberships",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "organization_id"})
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "organization_id"}),
+        indexes = {
+                @Index(name = "idx_memberships_user_id", columnList = "user_id"),
+                @Index(name = "idx_memberships_org_id", columnList = "organization_id"),
+                @Index(name = "idx_memberships_role_id", columnList = "role_id")
+        }
 )
 @Getter
 @Setter

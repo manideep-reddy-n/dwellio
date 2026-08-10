@@ -19,6 +19,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +32,7 @@ public class RoleService {
     private final OrganizationService organizationService;
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "rolesByOrg", key = "#organizationId")
     public List<RoleResponse> listRoles(UUID organizationId) {
         organizationService.findActiveOrganization(organizationId);
         return roleRepository.findAllActiveByOrganizationId(organizationId).stream()
@@ -38,6 +41,7 @@ public class RoleService {
     }
 
     @Transactional
+    @CacheEvict(value = "rolesByOrg", key = "#organizationId")
     public RoleResponse createRole(UUID organizationId, CreateRoleRequest request) {
         organizationService.findActiveOrganization(organizationId);
         validateCustomRoleName(request.name());
@@ -59,6 +63,7 @@ public class RoleService {
     }
 
     @Transactional
+    @CacheEvict(value = "rolesByOrg", key = "#organizationId")
     public RoleResponse updateRole(UUID organizationId, UUID roleId, UpdateRoleRequest request) {
         Role role = roleRepository.findActiveByIdAndOrganizationId(roleId, organizationId)
                 .orElseThrow(() -> new NotFoundException("Role not found"));
@@ -92,6 +97,7 @@ public class RoleService {
     }
 
     @Transactional
+    @CacheEvict(value = "rolesByOrg", key = "#organizationId")
     public void deleteRole(UUID organizationId, UUID roleId) {
         Role role = roleRepository.findActiveByIdAndOrganizationId(roleId, organizationId)
                 .orElseThrow(() -> new NotFoundException("Role not found"));

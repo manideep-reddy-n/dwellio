@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Building2, LayoutGrid, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
@@ -46,6 +47,20 @@ export function RoleAwareMarketingHero() {
     <section className="border-b bg-gradient-to-b from-teal-50/80 to-background dark:from-teal-950/20">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-3xl text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="inline-flex items-center gap-2.5 rounded-full border border-teal-200/60 bg-background/80 px-4 py-1.5 shadow-xs backdrop-blur-md dark:border-teal-900/50">
+              <Image
+                src="/dwellio-logo.webp"
+                alt="Dwellio Logo"
+                width={20}
+                height={20}
+                className="size-5 object-contain rounded-md"
+              />
+              <span className="text-xs font-semibold tracking-wide text-teal-700 dark:text-teal-400">
+                Dwellio Platform
+              </span>
+            </div>
+          </div>
           <p className="mb-3 text-sm font-medium text-teal-600 dark:text-teal-400">{quotes.eyebrow}</p>
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{quotes.title}</h1>
           <p className="mt-4 text-lg text-muted-foreground">{quotes.description}</p>

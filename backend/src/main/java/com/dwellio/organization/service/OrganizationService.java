@@ -43,6 +43,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 @Service
 @RequiredArgsConstructor
@@ -118,16 +120,19 @@ public class OrganizationService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "organizations", key = "#organizationId")
     public OrganizationResponse getById(UUID organizationId) {
         return toResponse(findActiveOrganization(organizationId));
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "organizationsBySlug", key = "#slug")
     public OrganizationResponse getBySlug(String slug) {
         return toResponse(findActiveOrganizationBySlug(slug));
     }
 
     @Transactional
+    @CacheEvict(value = {"organizations", "organizationsBySlug"}, allEntries = true)
     public OrganizationResponse update(UUID organizationId, UpdateOrganizationRequest request) {
         Organization organization = findActiveOrganization(organizationId);
         if (request.name() != null) {
@@ -190,6 +195,7 @@ public class OrganizationService {
     }
 
     @Transactional
+    @CacheEvict(value = {"organizations", "organizationsBySlug"}, allEntries = true)
     public OrganizationResponse updateLogoUrl(UUID organizationId, String logoUrl) {
         Organization organization = findActiveOrganization(organizationId);
         organization.setLogoUrl(logoUrl);

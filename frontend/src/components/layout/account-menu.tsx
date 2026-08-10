@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LogOut, UserRound } from "lucide-react";
+import { LogOut, UserRound, History } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,6 +37,13 @@ export function AccountMenu() {
         >
           <UserRound className="size-4" />
           Account settings
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="gap-2"
+          onClick={() => router.push("/app/timeline")}
+        >
+          <History className="size-4" />
+          Full timeline
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

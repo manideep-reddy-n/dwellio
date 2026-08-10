@@ -15,6 +15,9 @@ export const metadata: Metadata = {
     template: `${siteConfig.name} - %s`,
   },
   description: siteConfig.description,
+  icons: {
+    icon: "/dwellio-logo.webp",
+  },
 };
 
 export default function RootLayout({

@@ -17,7 +17,7 @@ function buildSearchQuery(params: MarketplaceSearchParams = {}): string {
 
 async function marketplaceFetch<T>(path: string): Promise<T> {
   const response = await fetch(`${apiConfig.baseUrl}${path}`, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (!response.ok) {

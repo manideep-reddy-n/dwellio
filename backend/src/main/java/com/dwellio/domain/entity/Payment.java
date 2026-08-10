@@ -16,12 +16,23 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.OneToMany;
+
+import jakarta.persistence.Index;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "payments", indexes = {
+        @Index(name = "idx_payments_org_id", columnList = "organization_id"),
+        @Index(name = "idx_payments_membership_id", columnList = "membership_id"),
+        @Index(name = "idx_payments_recorded_by", columnList = "recorded_by"),
+        @Index(name = "idx_payments_unit_space_id", columnList = "unit_space_id")
+})
 @Getter
 @Setter
 public class Payment extends SoftDeletableEntity {
@@ -74,4 +85,7 @@ public class Payment extends SoftDeletableEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_space_id")
     private Space unitSpace;
+
+    @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PaymentTransaction> transactions = new ArrayList<>();
 }

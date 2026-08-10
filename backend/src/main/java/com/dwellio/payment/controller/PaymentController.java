@@ -7,6 +7,8 @@ import com.dwellio.invoice.service.InvoiceService;
 import com.dwellio.payment.dto.CreateManualChargeRequest;
 import com.dwellio.payment.dto.PaymentResponse;
 import com.dwellio.payment.dto.RecordPaymentRequest;
+import com.dwellio.payment.dto.CheckoutRequest;
+import com.dwellio.payment.dto.CheckoutResponse;
 import com.dwellio.billing.service.GatedMaintenanceBillingService;
 import com.dwellio.organization.repository.OrganizationRepository;
 import com.dwellio.payment.service.PaymentService;
@@ -81,6 +83,27 @@ public class PaymentController {
             @AuthenticationPrincipal UserPrincipal principal
     ) {
         return paymentService.recordPayment(organizationId, paymentId, request, principal);
+    }
+
+    @PostMapping("/{paymentId}/checkout")
+    @PreAuthorize("@authz.hasPermission(#organizationId, 'payment:read_own')")
+    public CheckoutResponse checkout(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID paymentId,
+            @Valid @RequestBody CheckoutRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return paymentService.initiateCheckout(organizationId, paymentId, request, principal);
+    }
+
+    @PostMapping("/{paymentId}/verify/{orderId}")
+    @PreAuthorize("@authz.hasPermission(#organizationId, 'payment:read_own')")
+    public PaymentResponse verify(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID paymentId,
+            @PathVariable String orderId
+    ) {
+        return paymentService.verifyPayment(organizationId, paymentId, orderId);
     }
 
     @PostMapping("/{paymentId}/invoice")

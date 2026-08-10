@@ -18,8 +18,15 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 
+import jakarta.persistence.Index;
+
 @Entity
-@Table(name = "complaints")
+@Table(name = "complaints", indexes = {
+        @Index(name = "idx_complaints_org_id", columnList = "organization_id"),
+        @Index(name = "idx_complaints_created_by", columnList = "created_by_membership_id"),
+        @Index(name = "idx_complaints_assigned_to", columnList = "assigned_to_membership_id"),
+        @Index(name = "idx_complaints_asset_id", columnList = "asset_id")
+})
 @Getter
 @Setter
 public class Complaint extends SoftDeletableEntity {
