@@ -265,7 +265,7 @@ public class OrganizationService {
                 organization.getLongitude(),
                 organization.getContactPhone(),
                 organization.getContactEmail(),
-                organization.getPlan().getCode().name(),
+                organization.getPlan() != null ? organization.getPlan().getCode().name() : null,
                 organization.getDefaultMonthlyRent(),
                 organization.getLogoUrl(),
                 organization.getSlaFirstResponseHours(),

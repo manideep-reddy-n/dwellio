@@ -4,11 +4,10 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Compass, Home, Menu, Search } from "lucide-react";
+import { Compass, Home, Menu, Radio, Search } from "lucide-react";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { MobileSidebar } from "@/components/layout/mobile-sidebar";
-import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { OrgSwitcher } from "@/components/layout/org-switcher";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import { siteConfig } from "@/config/site";
 import { useMyMemberships } from "@/hooks/use-memberships";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
+  activeOrgNav,
   isResidentOnlyUser,
   orgHomePath,
   resolveAppHome,
@@ -27,6 +27,10 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
+const navIcons = {
+  Live: Radio,
+  Home: Home,
+} as const;
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
@@ -39,11 +43,9 @@ export function AppShell({ children }: AppShellProps) {
   const orgSlug = activeOrg?.slug;
   const homeHref = resolveAppHome(memberships);
   const residentOnly = isResidentOnlyUser(memberships);
-  const isInOrgRoute = Boolean(
-    orgSlug &&
-      (pathname.startsWith(`/app/${orgSlug}/operations`) ||
-        pathname.startsWith(`/app/${orgSlug}/resident`)),
-  );
+  const navItems = orgSlug ? activeOrgNav(orgSlug, permissions, isOwner) : [];
+  const hasOrgHomeNav = navItems.some((item) => item.label === "Home");
+  const isResidentRoute = Boolean(orgSlug && pathname.startsWith(`/app/${orgSlug}/resident`));
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -83,19 +85,21 @@ export function AppShell({ children }: AppShellProps) {
             </div>
           </div>
 
-          {/* Desktop nav */}
+          {/* Desktop nav — unchanged */}
           <nav className="flex shrink-0 items-center gap-0.5 sm:gap-1">
             <div className="hidden items-center gap-1 md:flex">
-              <Link
-                href="/"
-                className={cn(
-                  buttonVariants({ variant: pathname === "/" ? "secondary" : "ghost", size: "sm" }),
-                  "gap-1.5",
-                )}
-              >
-                <Home className="size-4" />
-                <span className="hidden sm:inline">Home</span>
-              </Link>
+              {!hasOrgHomeNav && (
+                <Link
+                  href="/"
+                  className={cn(
+                    buttonVariants({ variant: pathname === "/" ? "secondary" : "ghost", size: "sm" }),
+                    "gap-1.5",
+                  )}
+                >
+                  <Home className="size-4" />
+                  <span className="hidden sm:inline">Home</span>
+                </Link>
+              )}
               <Link
                 href="/explore"
                 className={cn(
@@ -126,6 +130,25 @@ export function AppShell({ children }: AppShellProps) {
                 <Search className="size-3.5" />
                 <span className="text-xs">Ctrl K</span>
               </Button>
+              {navItems.map(({ href, label }) => {
+                const Icon = navIcons[label as keyof typeof navIcons] ?? Home;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      buttonVariants({
+                        variant: pathname.startsWith(href) ? "secondary" : "ghost",
+                        size: "sm",
+                      }),
+                      "gap-1.5",
+                    )}
+                  >
+                    <Icon className="size-4" />
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
             </div>
 
             <NotificationBell />
@@ -133,12 +156,10 @@ export function AppShell({ children }: AppShellProps) {
           </nav>
         </div>
       </header>
-      <MobileBottomNav />
-
       <main
         className={cn(
           "mx-auto w-full max-w-7xl flex-1 px-4 py-4 sm:px-6 sm:py-6",
-          isInOrgRoute && "pb-20 md:pb-6",
+          isResidentRoute && "pb-20 md:pb-6",
         )}
       >
         {children}
